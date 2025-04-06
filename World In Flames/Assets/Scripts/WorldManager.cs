@@ -62,13 +62,13 @@ public class WorldManager : MonoBehaviour
     private AnimationCurve temperatureCurve;
 
     /// <summary>
-    /// Stored chunk provinces, key is chunk coordinates (chunk space)
+    /// All the provinces in the world, key being their location on the grid
     /// </summary>
-    private Dictionary<Vector2Int, Province[]> chunkProvinces;
+    private Dictionary<Vector2Int, Province> worldProvinces;
 
     private void Start()
     {
-        chunkProvinces = new();
+        worldProvinces = new();
         StartCoroutine(Generate());
     }
 
@@ -115,18 +115,30 @@ public class WorldManager : MonoBehaviour
                     {
                         var curProvI = y * chunkSize + x;
                         var curCompI = chunkY * worldWidthChunks * chSizeSq + chunkX * chSizeSq + curProvI;
-                        var provX = chunkX * chunkSize + x;
-                        var provY = chunkY * chunkSize + y;
-                        var province = new Province(
-                            new(provX, provY), heightNoise[curCompI], humidityNoise[curCompI], heatNoise[curCompI],
-                            new(x % 2, y % 2, (x + y) % 2, 1)
-                        );
+                        var provX = chunkX * (chunkSize-1) + x; // province global coordinates
+                        var provY = chunkY * (chunkSize-1) + y; // province global coordinates
+                        var provGlobCoord = new Vector2Int(provX, provY);
+                        // Getting/creating the provinces
+                        Province province;
+                        if (worldProvinces.ContainsKey(provGlobCoord))
+                        {
+                            // Already exists
+                            province = worldProvinces[provGlobCoord];
+                        } else
+                        {
+                            // Province doesnt exist, creating
+                            province = new Province(
+                                provGlobCoord, heightNoise[curCompI], humidityNoise[curCompI], heatNoise[curCompI],
+                                new(provX % 2, provY % 2, (provX + provY) % 2, 1)
+                            );
+                            worldProvinces[provGlobCoord] = province;
+                        }
                         provinceArr[curProvI] = province;
+
                     }
                 }
 
                 // Saving and creating chunk
-                chunkProvinces[new(chunkX, chunkY)] = provinceArr;
                 var chunk = Instantiate(chunkPrefab, transform);
                 chunk.transform.localScale = new(chunkScale, 1, chunkScale);
                 chunk.transform.position = new(
