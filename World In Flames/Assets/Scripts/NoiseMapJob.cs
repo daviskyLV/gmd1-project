@@ -27,12 +27,12 @@ public struct NoiseSettings
     [ReadOnly]
     public float Scale;
     /// <summary>
-    /// How many octaves to apply to noise
+    /// How many octaves to apply to noise, must be at least 1
     /// </summary>
     [ReadOnly]
     public int Octaves;
     /// <summary>
-    /// How big of an effect each octave has on previous octaves, 0.5 would be like this 1 -> 0.5 -> 0.25...
+    /// How big of an effect each octave has on previous octaves (0-1), 0.5 would be like this 1 -> 0.5 -> 0.25...
     /// </summary>
     [ReadOnly]
     public float Persistence;
@@ -46,19 +46,6 @@ public struct NoiseSettings
     /// </summary>
     [ReadOnly]
     public NativeArray<float2> OctaveOffsets;
-
-    public NoiseSettings(int width, int height, float2 offset, float scale, int octaves,
-        float persistence, float lacunarity, NativeArray<float2> octaveOffsets)
-    {
-        Width = math.max(width, 1);
-        Height = math.max(height, 1);
-        Offset = offset;
-        Scale = math.max(scale, 0.00001f);
-        Octaves = math.max(octaves, 1);
-        Persistence = math.clamp(persistence, 0f, 1f);
-        Lacunarity = math.max(lacunarity, 1f);
-        OctaveOffsets = octaveOffsets;
-    }
 }
 
 /// <summary>
@@ -95,6 +82,6 @@ public struct SimplexMapJob : IJobParallelFor
             frequency *= Settings.Lacunarity;
         }
 
-        ComputedNoise[index] = noiseHeight;//math.clamp(noiseHeight, -1f, 1f);
+        ComputedNoise[index] = noiseHeight; //math.clamp(noiseHeight, -1f, 1f);
     }
 }

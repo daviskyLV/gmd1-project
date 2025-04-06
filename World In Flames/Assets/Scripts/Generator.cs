@@ -17,9 +17,12 @@ public static class Generator
     /// <param name="scale">By how much to scale/zoom in the noise (higher value results in smoother transition)</param>
     /// <param name="persistence">How big effect each subsequent octave has on noise (0-1)</param>
     /// <param name="lacunarity">How chaotic should the noise be, similar to scale (>1)</param>
+    /// <param name="xAxisMultiplierCurve">Multiplier curve to apply to generated noise values based on x axis. Uses GLOBAL size (chunk amount x * (chunk size-1)). Left to Right</param>
+    /// <param name="yAxisMultiplierCurve">Multiplier curve to apply to generated noise values based on y axis. Uses GLOBAL size (chunk amount y * (chunk size-1)). Top to Bottom</param>
     /// <returns>All chunks points put into a single array, with chunk row major order</returns>
     public static float[] GenerateNoiseForChunks(
-        int chunkAmountX, int chunkAmountY, int chunkSize, uint seed, int octaves, Vector2 offset, float scale, float persistence, float lacunarity
+        int chunkAmountX, int chunkAmountY, int chunkSize, uint seed, int octaves, Vector2 offset, float scale, float persistence, float lacunarity,
+        AnimationCurve xAxisMultiplierCurve, AnimationCurve yAxisMultiplierCurve
     )
     {
         var chSizeSq = chunkSize * chunkSize;
@@ -31,10 +34,20 @@ public static class Generator
         var jobHandles = new NativeArray<JobHandle>(chunkAmount, Allocator.TempJob);
         var noiseChunks = new NativeArray<float>[chunkAmount];
         var octaveArrays = new NativeArray<float2>[chunkAmount]; // so we can later clean it up
+        var xAxisMultipliers = new NativeArray<float>(chunkAmountX * chunkSize, Allocator.TempJob); // multipliers for x axis points
+        var yAxisMultipliers = new NativeArray<float>(chunkAmountY * chunkSize, Allocator.TempJob); // multipliers for y axis points
 
         // Looping over all chunks and setting up a job for each of them
         for (int y = 0; y < chunkAmountY; y++)
         {
+            // Setting up current y chunk multipliers
+            for (int c = 0; c < chunkSize; c++)
+            {
+                // From top to bottom
+                var globalProgress = (1.0f/chunkAmountY) * y + (float)c/(chunkSize-1)/chunkAmountY;
+                yAxisMultipliers[y * chunkSize + c] = yAxisMultiplierCurve.Evaluate(globalProgress);
+            }
+
             for (int x = 0; x < chunkAmountX; x++)
             {
                 int chunkIndex = y * chunkAmountX + x;
@@ -49,6 +62,14 @@ public static class Generator
                     );
                 }
                 octaveArrays[chunkIndex] = octaveOffsets;
+
+                // Setting up current x chunk multipliers
+                for (int c = 0; c < chunkSize; c++)
+                {
+                    // From left to right
+                    var globalProgress = (1 / chunkAmountX) * x + c / (chunkSize - 1) / chunkAmountX;
+                    xAxisMultipliers[x * chunkSize + c] = xAxisMultiplierCurve.Evaluate(globalProgress);
+                }
 
                 // Setting up noise
                 var noiseSettings = new NoiseSettings
@@ -75,6 +96,7 @@ public static class Generator
 
         // Finishing all jobs and copying their results into an array
         JobHandle.CompleteAll(jobHandles);
+
         var computedNoise = new float[chunkAmount * chSizeSq];
         for (int i = 0; i < noiseChunks.Length; i++)
         {
@@ -84,7 +106,7 @@ public static class Generator
                 computedNoise[i * chSizeSq + j] = chunk[j];
             }
             octaveArrays[i].Dispose();
-            noiseChunks[i].Dispose();
+            chunk.Dispose();
         }
         jobHandles.Dispose();
 
@@ -95,12 +117,19 @@ public static class Generator
         {
             minValue = minNoise,
             maxValue = maxNoise,
-            inputValues = new(computedNoise, Allocator.TempJob)
+            inputValues = new(computedNoise, Allocator.TempJob),
+            xAxisMultipliers = xAxisMultipliers,
+            yAxisMultipliers = yAxisMultipliers,
+            chunkSize = chunkSize,
+            chunkAmntX = chunkAmountX,
+            chunkAmntY = chunkAmountY
         };
         var handle = normalizationJob.Schedule(computedNoise.Length, 64);
         handle.Complete();
         normalizationJob.inputValues.CopyTo(computedNoise);
         normalizationJob.inputValues.Dispose();
+        xAxisMultipliers.Dispose();
+        yAxisMultipliers.Dispose();
 
         return computedNoise;
     }

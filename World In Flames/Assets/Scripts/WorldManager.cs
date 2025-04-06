@@ -54,6 +54,12 @@ public class WorldManager : MonoBehaviour
     private GameObject chunkPrefab;
     [SerializeField]
     private bool regenerate = false;
+    [SerializeField]
+    [Tooltip("Base multiplication curve to use, should be kept at 1")]
+    private AnimationCurve baseCurve;
+    [SerializeField]
+    [Tooltip("Y axis curve (top to bottom) on how to multiply temperature")]
+    private AnimationCurve temperatureCurve;
 
     /// <summary>
     /// Stored chunk provinces, key is chunk coordinates (chunk space)
@@ -84,13 +90,16 @@ public class WorldManager : MonoBehaviour
         }
 
         var heightNoise = Generator.GenerateNoiseForChunks(
-            worldWidthChunks, worldHeightChunks, chunkSize, seed, octaves, offset, scale, persistence, lacunarity
+            worldWidthChunks, worldHeightChunks, chunkSize, seed, octaves, offset, scale, persistence, lacunarity,
+            baseCurve, temperatureCurve
         );
         var heatNoise = Generator.GenerateNoiseForChunks(
-            worldWidthChunks, worldHeightChunks, chunkSize, seed, octaves+1, offset, scale+7, persistence, lacunarity
+            worldWidthChunks, worldHeightChunks, chunkSize, seed, octaves+1, offset, scale+7, persistence, lacunarity,
+            baseCurve, temperatureCurve
         );
         var humidityNoise = Generator.GenerateNoiseForChunks(
-            worldWidthChunks, worldHeightChunks, chunkSize, seed, octaves+2, offset, scale+11, persistence, lacunarity
+            worldWidthChunks, worldHeightChunks, chunkSize, seed, octaves+2, offset, scale+11, persistence, lacunarity,
+            baseCurve, baseCurve
         );
 
         var chSizeSq = chunkSize * chunkSize;
@@ -105,7 +114,7 @@ public class WorldManager : MonoBehaviour
                     for (int x = 0; x < chunkSize; x++)
                     {
                         var curProvI = y * chunkSize + x;
-                        var curCompI = chunkY * worldWidthChunks * chSizeSq + chunkX * chSizeSq + y * chunkSize + x;
+                        var curCompI = chunkY * worldWidthChunks * chSizeSq + chunkX * chSizeSq + curProvI;
                         var provX = chunkX * chunkSize + x;
                         var provY = chunkY * chunkSize + y;
                         var province = new Province(
