@@ -72,7 +72,7 @@ public static class Generator
                 }
 
                 // Setting up noise
-                var noiseSettings = new NoiseSettings
+                var noiseSettings = new NoiseJobSettings
                 {
                     Width = chunkSize,
                     Height = chunkSize,

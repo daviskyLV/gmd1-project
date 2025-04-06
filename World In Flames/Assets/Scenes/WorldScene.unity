@@ -421,19 +421,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cc9073f6a79fcc94c8ccfc6b937f1065, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  chunkPrefab: {fileID: 3314719676165895377, guid: a8089e99224581c428df44c2b2c21ed0, type: 3}
   worldWidthChunks: 5
   worldHeightChunks: 4
   chunkScale: 0.5
   heightMultiplier: 1
-  offset: {x: 0, y: 0}
-  octaves: 3
-  scale: 5.432
-  persistence: 0.5
-  lacunarity: 1
-  seed: 123
+  heightNoise: {fileID: 11400000, guid: 478bdf780e3704a42a4124f52df944a5, type: 2}
+  temperatureNoise: {fileID: 11400000, guid: 8566243eb5ff1aa4e8a771c90a9015a2, type: 2}
+  humidityNoise: {fileID: 11400000, guid: 0aff357c23fa5c34f92726c8feefd9d8, type: 2}
   waterLevel: 0.235
-  blendingWidth: 16
-  chunkPrefab: {fileID: 3314719676165895377, guid: a8089e99224581c428df44c2b2c21ed0, type: 3}
   regenerate: 0
   baseCurve:
     serializedVersion: 2

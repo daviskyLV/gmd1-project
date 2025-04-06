@@ -4,7 +4,7 @@ using Unity.Jobs;
 using Unity.Mathematics;
 
 [BurstCompile]
-public struct NoiseSettings
+public struct NoiseJobSettings
 {
     /// <summary>
     /// Map width, must be at least 1
@@ -55,7 +55,7 @@ public struct NoiseSettings
 public struct SimplexMapJob : IJobParallelFor
 {
     [ReadOnly]
-    public NoiseSettings Settings;
+    public NoiseJobSettings Settings;
 
     /// <summary>
     /// Output after running the job

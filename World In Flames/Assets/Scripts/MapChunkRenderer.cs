@@ -1,5 +1,3 @@
-using NUnit.Framework.Internal;
-using System;
 using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine;
@@ -10,8 +8,7 @@ public enum LevelOfDetail
     TWO = 2,
     THREE = 6,
     FOUR = 8,
-    FIVE = 10,
-    SIX = 12
+    FIVE = 12
 }
 
 [RequireComponent(typeof(MeshCollider))]
@@ -62,10 +59,10 @@ public class MapChunkRenderer : MonoBehaviour
         {
             if (Provinces[i] == null)
                 Debug.Log($"Province index  {i} is null!");
-            if (Provinces[i].Color == null)
+            if (Provinces[i].GetColor() == null)
                 Debug.Log($"Broken province color???? Province index: {i}, pos: {Provinces[i].Position}");
 
-            var c = Provinces[i].Color; ///WTF
+            var c = Provinces[i].GetColor(); ///WTF
             colors[i] = c; //new Color(c[0], c[1], c[2], c[3]);
         }
 

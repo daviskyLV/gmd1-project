@@ -1,9 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
-using Unity.Collections;
 using Unity.Entities.UI;
-using Unity.Jobs;
-using Unity.Mathematics;
 using UnityEngine;
 
 public class WorldManager : MonoBehaviour
@@ -11,8 +8,11 @@ public class WorldManager : MonoBehaviour
     /// <summary>
     /// How many provinces are in a chunk on each axis, should be below 255 and divisible by LevelOfDetail quality 
     /// </summary>
-    private const int chunkSize = 16;
-
+    [SerializeField]
+    private const int chunkSize = 24;
+    [Header("Chunk settings")]
+    [SerializeField]
+    private GameObject chunkPrefab;
     [SerializeField]
     [Min(1)]
     private int worldWidthChunks;
@@ -22,36 +22,22 @@ public class WorldManager : MonoBehaviour
     [SerializeField]
     [Tooltip("By how much should the chunk be rescaled in world space")]
     [Min(0.05f)]
-    private float chunkScale;
+    private float chunkScale = 0.5f;
     [SerializeField]
-    private float heightMultiplier;
-    [SerializeField]
-    private Vector2 offset;
-    [SerializeField]
-    [Min(1)]
-    private int octaves;
-    [SerializeField]
-    [Tooltip("How scaled the noise generated be, higher values result in smoother transition")]
-    [Min(0.001f)]
-    private float scale;
-    [SerializeField]
-    [MinMax(0.0f, 1f)]
-    private float persistence;
-    [SerializeField]
-    [Min(1f)]
-    private float lacunarity;
+    private float heightMultiplier = 1f;
 
+    [Header("Noise settings")]
     [SerializeField]
-    [Min(1)]
-    private uint seed;
+    private NoiseSettings heightNoise;
+    [SerializeField]
+    private NoiseSettings temperatureNoise;
+    [SerializeField]
+    private NoiseSettings humidityNoise;
+
+    [Header("Misc settings")]
     [SerializeField]
     [Range(0.0f, 1.0f)]
     private float waterLevel;
-    [SerializeField]
-    [Range(0, 25)]
-    private int blendingWidth;
-    [SerializeField]
-    private GameObject chunkPrefab;
     [SerializeField]
     private bool regenerate = false;
     [SerializeField]
@@ -89,17 +75,17 @@ public class WorldManager : MonoBehaviour
             Destroy(transform.GetChild(i).gameObject);
         }
 
-        var heightNoise = Generator.GenerateNoiseForChunks(
-            worldWidthChunks, worldHeightChunks, chunkSize, seed, octaves, offset, scale, persistence, lacunarity,
-            baseCurve, temperatureCurve
+        var generatedHeight = Generator.GenerateNoiseForChunks(
+            worldWidthChunks, worldHeightChunks, chunkSize, heightNoise.GetSeed(), heightNoise.GetOctaves(), heightNoise.GetOffset(),
+            heightNoise.GetScale(), heightNoise.GetPersistence(), heightNoise.GetLacunarity(), heightNoise.GetMultiplicationCurveX(), heightNoise.GetMultiplicationCurveY()
         );
-        var heatNoise = Generator.GenerateNoiseForChunks(
-            worldWidthChunks, worldHeightChunks, chunkSize, seed, octaves+1, offset, scale+7, persistence, lacunarity,
-            baseCurve, temperatureCurve
+        var generatedTemperature = Generator.GenerateNoiseForChunks(
+            worldWidthChunks, worldHeightChunks, chunkSize, temperatureNoise.GetSeed(), temperatureNoise.GetOctaves(), temperatureNoise.GetOffset(),
+            temperatureNoise.GetScale(), temperatureNoise.GetPersistence(), temperatureNoise.GetLacunarity(), temperatureNoise.GetMultiplicationCurveX(), temperatureNoise.GetMultiplicationCurveY()
         );
-        var humidityNoise = Generator.GenerateNoiseForChunks(
-            worldWidthChunks, worldHeightChunks, chunkSize, seed, octaves+2, offset, scale+11, persistence, lacunarity,
-            baseCurve, baseCurve
+        var generatedHumidity = Generator.GenerateNoiseForChunks(
+            worldWidthChunks, worldHeightChunks, chunkSize, humidityNoise.GetSeed(), humidityNoise.GetOctaves(), humidityNoise.GetOffset(),
+            humidityNoise.GetScale(), humidityNoise.GetPersistence(), humidityNoise.GetLacunarity(), humidityNoise.GetMultiplicationCurveX(), humidityNoise.GetMultiplicationCurveY()
         );
 
         var chSizeSq = chunkSize * chunkSize;
@@ -128,8 +114,8 @@ public class WorldManager : MonoBehaviour
                         {
                             // Province doesnt exist, creating
                             province = new Province(
-                                provGlobCoord, heightNoise[curCompI], humidityNoise[curCompI], heatNoise[curCompI],
-                                new(provX % 2, provY % 2, (provX + provY) % 2, 1)
+                                provGlobCoord, generatedHeight[curCompI], generatedHumidity[curCompI], generatedTemperature[curCompI],
+                                Color.green, ProvinceColor.OwnerColor
                             );
                             worldProvinces[provGlobCoord] = province;
                         }

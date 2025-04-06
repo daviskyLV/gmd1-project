@@ -1,50 +1,75 @@
-using Unity.Collections;
-using Unity.Mathematics;
+using System;
 using UnityEngine;
+
+/// <summary>
+/// Used to determine which color mode the province should use
+/// </summary>
+public enum ProvinceColor
+{
+    /// <summary>
+    /// Use thr base color for province
+    /// </summary>
+    ColorOverride,
+    /// <summary>
+    /// Use a shade of owner color
+    /// </summary>
+    OwnerColor
+}
 
 public class Province
 {
     /// <summary>
     /// Province position on the MAP GRID
     /// </summary>
-    [ReadOnly]
-    public Vector2Int Position;
+    public Vector2Int Position { get; }
     /// <summary>
-    /// Province height, -1 to 1
+    /// Province height, 0 to 1
     /// </summary>
-    [ReadOnly]
-    public float Height;
+    public float Height { get; }
     /// <summary>
-    /// Base humidity that is used to calculate new humidity for this province, -1 to 1
+    /// Base humidity that is used to calculate current humidity for this province, 0 to 1
     /// </summary>
-    [ReadOnly]
-    public float BaseHumidity;
+    public float BaseHumidity { get; }
     /// <summary>
-    /// Current humidity in the province, -1 to 1
+    /// Base heat that is used to calculate current heat for this province, 0 to 1
     /// </summary>
-    public float Humidity;
+    public float BaseHeat { get; }
     /// <summary>
-    /// Base heat that is used to calculate newheat for this province, -1 to 1
+    /// How the province should be colored in color override mode
     /// </summary>
-    [ReadOnly]
-    public float BaseHeat;
+    public Color ColorOverride { get; set; }
+    private ProvinceColor coloringType;
     /// <summary>
-    /// Current heat in province, -1 to 1
+    /// Who currently owns (occupies) the province
     /// </summary>
-    public float Heat;
+    public Nation Owner { get; private set; }
     /// <summary>
-    /// How the province should be colored
+    /// Fired whenever the occupier of the province changes, arguments are previous owner, new owner
     /// </summary>
-    public Color Color;
+    public event Action<Nation, Nation> OwnerChanged;
 
-    public Province(Vector2Int position, float height, float humidity, float heat, Color initialColor)
+    public Province(Vector2Int position, float height, float humidity, float heat, Color defaultColor, ProvinceColor coloringType, Nation owner = null)
     {
         Position = position;
-        Height = Mathf.Clamp(height, -1, 1);
-        BaseHumidity = Mathf.Clamp(humidity, -1, 1);
-        Humidity = BaseHumidity;
-        BaseHeat = Mathf.Clamp(heat, -1, 1);
-        Heat = BaseHeat;
-        Color = initialColor;
+        Height = Mathf.Clamp01(height);
+        BaseHumidity = Mathf.Clamp01(humidity);
+        BaseHeat = Mathf.Clamp01(heat);
+        ColorOverride = defaultColor;
+        this.coloringType = coloringType;
+        Owner = owner;
+    }
+
+    public void SetOwner(Nation owner)
+    {
+        OwnerChanged?.Invoke(Owner, owner);
+        Owner = owner;
+    }
+
+    public Color GetColor()
+    {
+        if (coloringType == ProvinceColor.ColorOverride || Owner == null)
+            return ColorOverride;
+
+        return Owner.Color;
     }
 }
