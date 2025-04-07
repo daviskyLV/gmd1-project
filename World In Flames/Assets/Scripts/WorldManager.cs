@@ -1,6 +1,6 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
-using Unity.Entities.UI;
 using UnityEngine;
 
 public class WorldManager : MonoBehaviour
@@ -15,10 +15,10 @@ public class WorldManager : MonoBehaviour
     private GameObject chunkPrefab;
     [SerializeField]
     [Min(1)]
-    private int worldWidthChunks;
+    private int worldWidthChunks = 1;
     [SerializeField]
     [Min(1)]
-    private int worldHeightChunks;
+    private int worldHeightChunks = 1;
     [SerializeField]
     [Tooltip("By how much should the chunk be rescaled in world space")]
     [Min(0.05f)]
@@ -36,25 +36,35 @@ public class WorldManager : MonoBehaviour
 
     [Header("Misc settings")]
     [SerializeField]
-    [Range(0.0f, 1.0f)]
-    private float waterLevel;
-    [SerializeField]
     private bool regenerate = false;
     [SerializeField]
-    [Tooltip("Base multiplication curve to use, should be kept at 1")]
-    private AnimationCurve baseCurve;
+    [Range(0.0f, 1.0f)]
+    private float waterLevel = 0.25f;
     [SerializeField]
-    [Tooltip("Y axis curve (top to bottom) on how to multiply temperature")]
-    private AnimationCurve temperatureCurve;
+    private NationSetup[] starterNations;
+
+    [Header("Coloring")]
+    [SerializeField]
+    private Color shallowWaterColor;
+    [SerializeField]
+    private Color deepWaterColor;
+    [SerializeField]
+    private Color defaultWorldColor;
 
     /// <summary>
     /// All the provinces in the world, key being their location on the grid
     /// </summary>
     private Dictionary<Vector2Int, Province> worldProvinces;
+    /// <summary>
+    /// Nations in the world (also defeated), key being their id
+    /// </summary>
+    private Dictionary<int, Nation> nations;
+
 
     private void Start()
     {
         worldProvinces = new();
+        nations = new();
         StartCoroutine(Generate());
     }
 
@@ -74,20 +84,25 @@ public class WorldManager : MonoBehaviour
         {
             Destroy(transform.GetChild(i).gameObject);
         }
+        worldProvinces.Clear();
+        nations.Clear();
 
         var generatedHeight = Generator.GenerateNoiseForChunks(
-            worldWidthChunks, worldHeightChunks, chunkSize, heightNoise.GetSeed(), heightNoise.GetOctaves(), heightNoise.GetOffset(),
-            heightNoise.GetScale(), heightNoise.GetPersistence(), heightNoise.GetLacunarity(), heightNoise.GetMultiplicationCurveX(), heightNoise.GetMultiplicationCurveY()
+            worldWidthChunks, worldHeightChunks, chunkSize, heightNoise.GetSeed(), heightNoise.GetOctaves(), heightNoise.GetOffset(), heightNoise.GetScale(),
+            heightNoise.GetPersistence(), heightNoise.GetLacunarity(), heightNoise.GetMultiplicationCurveX(), heightNoise.GetMultiplicationCurveY(), heightNoise.GetValueMultiplier()
         );
         var generatedTemperature = Generator.GenerateNoiseForChunks(
-            worldWidthChunks, worldHeightChunks, chunkSize, temperatureNoise.GetSeed(), temperatureNoise.GetOctaves(), temperatureNoise.GetOffset(),
-            temperatureNoise.GetScale(), temperatureNoise.GetPersistence(), temperatureNoise.GetLacunarity(), temperatureNoise.GetMultiplicationCurveX(), temperatureNoise.GetMultiplicationCurveY()
+            worldWidthChunks, worldHeightChunks, chunkSize, temperatureNoise.GetSeed(), temperatureNoise.GetOctaves(), temperatureNoise.GetOffset(), temperatureNoise.GetScale(),
+            temperatureNoise.GetPersistence(), temperatureNoise.GetLacunarity(), temperatureNoise.GetMultiplicationCurveX(), temperatureNoise.GetMultiplicationCurveY(), temperatureNoise.GetValueMultiplier()
         );
         var generatedHumidity = Generator.GenerateNoiseForChunks(
-            worldWidthChunks, worldHeightChunks, chunkSize, humidityNoise.GetSeed(), humidityNoise.GetOctaves(), humidityNoise.GetOffset(),
-            humidityNoise.GetScale(), humidityNoise.GetPersistence(), humidityNoise.GetLacunarity(), humidityNoise.GetMultiplicationCurveX(), humidityNoise.GetMultiplicationCurveY()
+            worldWidthChunks, worldHeightChunks, chunkSize, humidityNoise.GetSeed(), humidityNoise.GetOctaves(), humidityNoise.GetOffset(), humidityNoise.GetScale(),
+            humidityNoise.GetPersistence(), humidityNoise.GetLacunarity(), humidityNoise.GetMultiplicationCurveX(), humidityNoise.GetMultiplicationCurveY(), humidityNoise.GetValueMultiplier()
         );
 
+        // Generating map chunks
+        var freeGndProvinces = new List<Province>();
+        var uncheckedProvinces = new Dictionary<Vector2Int, Province>(); // ground provinces which may still have uninitialized adjacent owners
         var chSizeSq = chunkSize * chunkSize;
         var chScaleXchSize = chunkScale * chunkSize;
         for (int chunkY = 0; chunkY < worldHeightChunks; chunkY++)
@@ -113,10 +128,24 @@ public class WorldManager : MonoBehaviour
                         } else
                         {
                             // Province doesnt exist, creating
-                            province = new Province(
-                                provGlobCoord, generatedHeight[curCompI], generatedHumidity[curCompI], generatedTemperature[curCompI],
-                                Color.green, ProvinceColor.OwnerColor
-                            );
+                            if (generatedHeight[curCompI] <= waterLevel)
+                            {
+                                // Province under water, no owner
+                                province = new Province(
+                                    provGlobCoord, waterLevel, generatedHumidity[curCompI], generatedTemperature[curCompI],
+                                    Color.Lerp(deepWaterColor, shallowWaterColor, generatedHeight[curCompI]/waterLevel), ProvinceColor.ColorOverride, true
+                                );
+                            } else
+                            {
+                                // Province above water
+                                province = new Province(
+                                    provGlobCoord, generatedHeight[curCompI], generatedHumidity[curCompI], generatedTemperature[curCompI],
+                                    defaultWorldColor, ProvinceColor.OwnerColor, false
+                                );
+                                freeGndProvinces.Add( province );
+                                uncheckedProvinces[province.Position] = province;
+                            }
+                            
                             worldProvinces[provGlobCoord] = province;
                         }
                         provinceArr[curProvI] = province;
@@ -140,7 +169,192 @@ public class WorldManager : MonoBehaviour
                 chunkRenderer.ApplyMesh();
             }
         }
-        
+
+        // Shuffling first n ground provinces to pick as starter provinces for nations
+        for (int i = 0; i < Mathf.Min(starterNations.Length, freeGndProvinces.Count); i++)
+        {
+            int j = UnityEngine.Random.Range(i, freeGndProvinces.Count);
+            (freeGndProvinces[i], freeGndProvinces[j]) = (freeGndProvinces[j], freeGndProvinces[i]);
+        }
+
+        // Generating countries
+        var totalBias = 0; // later when assigning extra territory
+        var borderProvinces = new Dictionary<Vector2Int, Province>(); // provinces bordering unchecked land
+        for (int i = 0; i < starterNations.Length; i++)
+        {
+            var owned = new List<Province>();
+            var nation = new Nation(i, starterNations[i].color, starterNations[i].name, owned, null);
+            nations[i] = nation;
+            totalBias += starterNations[i].territoryBias;
+
+            // Getting starter province
+            if (i < freeGndProvinces.Count)
+            {
+                freeGndProvinces[i].SetOwner(nation);
+                nation.OwnedProvinces.Add(freeGndProvinces[i]);
+                borderProvinces[freeGndProvinces[i].Position] = freeGndProvinces[i];
+            }
+        }
+
+        // Expanding nations until no free ground provinces left
+        while (uncheckedProvinces.Count > 0)
+        {
+            //yield return new WaitForSeconds(0.017f);
+            var chosenNationRNG = UnityEngine.Random.Range(0, totalBias);
+            var curNation = 0;
+            Nation chosenNation = null;
+            for (int i = 0; i < starterNations.Length; i++)
+            {
+                curNation += starterNations[i].territoryBias;
+                if (chosenNationRNG < curNation)
+                {
+                    chosenNation = nations[i];
+                    break;
+                }
+            }
+            if (chosenNation == null) {
+                Debug.LogWarning("Chosen nation null!");
+                break;
+            }
+
+            Province prov = null;
+            List<Vector2Int> keys;
+            if (borderProvinces.Count <= 0)
+            {
+                Debug.Log("No border provinces! Choosing from unchecked");
+                // No border provinces, choosing from unchecked
+                keys = new List<Vector2Int>(uncheckedProvinces.Keys);
+                Utilities.ShuffleList(keys, (uint)Time.time);
+                
+                for (int i = 0; i < keys.Count; i++)
+                {
+                    if (uncheckedProvinces[keys[i]].Owner == null) {
+                        prov = uncheckedProvinces[keys[i]];
+                        break;
+                    }
+                }
+
+                if (prov == null)
+                    break; // all provinces have an owner
+
+                borderProvinces[prov.Position] = prov;
+                prov.SetOwner(chosenNation);
+                continue;
+            }
+
+
+            // Going through border provinces to expand borders
+            keys = new List<Vector2Int>(borderProvinces.Keys);
+            var claimSuccessful = false;
+            for (int i = 0; i < keys.Count; i++)
+            {
+                if (borderProvinces[keys[i]].Owner == chosenNation) {
+                    prov = borderProvinces[keys[i]];
+                    var pp = prov.Position;
+                    // top
+                    var tl = new Vector2Int(pp.x - 1, pp.y + 1);
+                    var tm = new Vector2Int(pp.x, pp.y + 1);
+                    var tr = new Vector2Int(pp.x + 1, pp.y + 1);
+
+                    if (NationBorderExpander(uncheckedProvinces, borderProvinces, tl, chosenNation))
+                    {
+                        claimSuccessful = true;
+                        break;
+                    }
+                    if (NationBorderExpander(uncheckedProvinces, borderProvinces, tm, chosenNation))
+                    {
+                        claimSuccessful = true;
+                        break;
+                    }
+                    if (NationBorderExpander(uncheckedProvinces, borderProvinces, tr, chosenNation))
+                    {
+                        claimSuccessful = true;
+                        break;
+                    }
+                    // bottom
+                    var bl = new Vector2Int(pp.x - 1, pp.y - 1);
+                    var bm = new Vector2Int(pp.x, pp.y - 1);
+                    var br = new Vector2Int(pp.x + 1, pp.y - 1);
+
+                    if (NationBorderExpander(uncheckedProvinces, borderProvinces, bl, chosenNation))
+                    {
+                        claimSuccessful = true;
+                        break;
+                    }
+                    if (NationBorderExpander(uncheckedProvinces, borderProvinces, bm, chosenNation))
+                    {
+                        claimSuccessful = true;
+                        break;
+                    }
+                    if (NationBorderExpander(uncheckedProvinces, borderProvinces, br, chosenNation))
+                    {
+                        claimSuccessful = true;
+                        break;
+                    }
+                    // middle
+                    var ml = new Vector2Int(pp.x - 1, pp.y);
+                    var mr = new Vector2Int(pp.x + 1, pp.y);
+
+                    if (NationBorderExpander(uncheckedProvinces, borderProvinces, ml, chosenNation))
+                    {
+                        claimSuccessful = true;
+                        break;
+                    }
+                    if (NationBorderExpander(uncheckedProvinces, borderProvinces, mr, chosenNation))
+                    {
+                        claimSuccessful = true;
+                        break;
+                    }
+
+                    // everything fully checked, mark province as so and try next one
+                    uncheckedProvinces.Remove(prov.Position);
+                    borderProvinces.Remove(prov.Position);
+                }
+            }
+
+            if (claimSuccessful)
+                continue;
+
+            // couldnt expand, trying to find a spot on the map from unchecked
+            Debug.Log("Couldnt get claim via borders! Choosing from unchecked");
+            keys = new List<Vector2Int>(uncheckedProvinces.Keys);
+            Utilities.ShuffleList(keys, (uint)Time.time);
+
+            for (int i = 0; i < keys.Count; i++)
+            {
+                if (uncheckedProvinces[keys[i]].Owner == null)
+                {
+                    prov = uncheckedProvinces[keys[i]];
+                    break;
+                }
+            }
+
+            if (prov == null)
+                break; // all provinces have an owner
+
+            borderProvinces[prov.Position] = prov;
+            prov.SetOwner(chosenNation);
+        }
+
         yield return null;
+    }
+
+    private bool NationBorderExpander(
+        Dictionary<Vector2Int, Province> uncheckedProvinces, Dictionary<Vector2Int, Province> borderProvinces, Vector2Int provPos, Nation newOwner
+    )
+    {
+        if (uncheckedProvinces.ContainsKey(provPos))
+        {
+            // top left corner is unchecked
+            if (uncheckedProvinces[provPos].Owner == null)
+            {
+                // free real estate
+                borderProvinces[provPos] = uncheckedProvinces[provPos];
+                uncheckedProvinces[provPos].SetOwner(newOwner);
+                return true;
+            }
+        }
+
+        return false;
     }
 }

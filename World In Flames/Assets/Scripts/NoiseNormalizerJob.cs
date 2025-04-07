@@ -87,7 +87,7 @@ public struct NoiseNormalizerJob : IJobParallelFor
                 inputValues[index] *= math.max(xAxisMultipliers[globalX], yAxisMultipliers[globalY]);
                 break;
             case AxisValueMultiplier.Average:
-                inputValues[index] *= ((xAxisMultipliers[globalX] * yAxisMultipliers[globalY]) / 2f);
+                inputValues[index] *= ((xAxisMultipliers[globalX] + yAxisMultipliers[globalY]) / 2f);
                 break;
             default:
                 break;

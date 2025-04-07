@@ -326,8 +326,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1285652854}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.46646386, y: 0, z: 0, w: 0.88454026}
-  m_LocalPosition: {x: 0, y: 6.11, z: -5.87}
+  m_LocalRotation: {x: 0.4010043, y: -0.4422092, z: 0.23220982, w: 0.7679357}
+  m_LocalPosition: {x: 23.15374, y: 36.62512, z: -14.10206}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -423,71 +423,30 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   chunkPrefab: {fileID: 3314719676165895377, guid: a8089e99224581c428df44c2b2c21ed0, type: 3}
   worldWidthChunks: 5
-  worldHeightChunks: 4
+  worldHeightChunks: 5
   chunkScale: 0.5
   heightMultiplier: 1
   heightNoise: {fileID: 11400000, guid: 478bdf780e3704a42a4124f52df944a5, type: 2}
   temperatureNoise: {fileID: 11400000, guid: 8566243eb5ff1aa4e8a771c90a9015a2, type: 2}
   humidityNoise: {fileID: 11400000, guid: 0aff357c23fa5c34f92726c8feefd9d8, type: 2}
-  waterLevel: 0.235
   regenerate: 0
-  baseCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 34
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 1
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 34
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  temperatureCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 0.5
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 1
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
+  waterLevel: 0.181
+  starterNations:
+  - name: uwu
+    color: {r: 0.9926069, g: 1, b: 0, a: 1}
+    territoryBias: 1
+  - name: owo
+    color: {r: 0.32050014, g: 1, b: 0, a: 1}
+    territoryBias: 2
+  - name: gugu
+    color: {r: 1, g: 0, b: 0.89338493, a: 1}
+    territoryBias: 2
+  - name: gaga
+    color: {r: 0, g: 1, b: 0.9905875, a: 1}
+    territoryBias: 4
+  shallowWaterColor: {r: 0, g: 0.48412704, b: 1, a: 1}
+  deepWaterColor: {r: 0, g: 0.15049413, b: 0.312, a: 1}
+  defaultWorldColor: {r: 0.255, g: 0.255, b: 0.255, a: 1}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

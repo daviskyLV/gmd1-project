@@ -26,6 +26,10 @@ public class MapChunkRenderer : MonoBehaviour
 
     // For texture
     private Texture2D chunkTexture;
+    /// <summary>
+    /// Whether to rerender texture automatically on next frame
+    /// </summary>
+    private bool rerenderTexture = false;
     // Mesh related
     private Vector3[] meshVertices;
     private Vector2[] meshUVs;
@@ -45,6 +49,25 @@ public class MapChunkRenderer : MonoBehaviour
         HeightMultiplier = heightMultiplier;
         LevelOfDetail = initialLOD;
         Width = width;
+        for (int i = 0; i < provinces.Length; i++)
+        {
+            provinces[i].ColorChanged += OnProvinceColorChanged;
+        }
+    }
+
+    private void Update()
+    {
+        if (!rerenderTexture)
+            return;
+
+        rerenderTexture = false;
+        RecalculateTexture();
+        ReloadTexture();
+    }
+
+    private void OnProvinceColorChanged()
+    {
+        rerenderTexture = true;
     }
 
     /// <summary>

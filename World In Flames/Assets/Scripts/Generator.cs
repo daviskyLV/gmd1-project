@@ -22,7 +22,7 @@ public static class Generator
     /// <returns>All chunks points put into a single array, with chunk row major order</returns>
     public static float[] GenerateNoiseForChunks(
         int chunkAmountX, int chunkAmountY, int chunkSize, uint seed, int octaves, Vector2 offset, float scale, float persistence, float lacunarity,
-        AnimationCurve xAxisMultiplierCurve, AnimationCurve yAxisMultiplierCurve
+        AnimationCurve xAxisMultiplierCurve, AnimationCurve yAxisMultiplierCurve, AxisValueMultiplier axisValueMultiplier
     )
     {
         var chSizeSq = chunkSize * chunkSize;
@@ -67,7 +67,7 @@ public static class Generator
                 for (int c = 0; c < chunkSize; c++)
                 {
                     // From left to right
-                    var globalProgress = (1 / chunkAmountX) * x + c / (chunkSize - 1) / chunkAmountX;
+                    var globalProgress = (1f / chunkAmountX) * x + (float)c / (chunkSize - 1) / chunkAmountX;
                     xAxisMultipliers[x * chunkSize + c] = xAxisMultiplierCurve.Evaluate(globalProgress);
                 }
 
@@ -120,6 +120,7 @@ public static class Generator
             inputValues = new(computedNoise, Allocator.TempJob),
             xAxisMultipliers = xAxisMultipliers,
             yAxisMultipliers = yAxisMultipliers,
+            axisValueMultiplier = axisValueMultiplier,
             chunkSize = chunkSize,
             chunkAmntX = chunkAmountX,
             chunkAmntY = chunkAmountY

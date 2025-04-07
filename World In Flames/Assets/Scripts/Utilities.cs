@@ -1,4 +1,4 @@
-using System;
+using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
@@ -87,5 +87,25 @@ public static class Utilities
 
         min = minVal;
         max = maxVal;
+    }
+
+    /// <summary>
+    /// In place list shuffle
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="list">list to shuffle</param>
+    /// <param name="seed">seed to use, must be above 0</param>
+    public static void ShuffleList<T>(IList<T> list, uint seed)
+    {
+        if (seed == 0)
+            seed = 1;
+
+        var rng = new Unity.Mathematics.Random(seed);
+        int n = list.Count;
+        while (n > 1)
+        {
+            int k = rng.NextInt(0, n--);
+            (list[k], list[n]) = (list[n], list[k]);
+        }
     }
 }
