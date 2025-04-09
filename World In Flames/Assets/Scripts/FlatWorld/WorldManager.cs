@@ -221,7 +221,6 @@ public class WorldManager : MonoBehaviour
             List<Vector2Int> keys;
             if (borderProvinces.Count <= 0)
             {
-                Debug.Log("No border provinces! Choosing from unchecked");
                 // No border provinces, choosing from unchecked
                 keys = new List<Vector2Int>(uncheckedProvinces.Keys);
                 Utilities.ShuffleList(keys, (uint)Time.time);
@@ -316,7 +315,6 @@ public class WorldManager : MonoBehaviour
                 continue;
 
             // couldnt expand, trying to find a spot on the map from unchecked
-            Debug.Log("Couldnt get claim via borders! Choosing from unchecked");
             keys = new List<Vector2Int>(uncheckedProvinces.Keys);
             Utilities.ShuffleList(keys, (uint)Time.time);
 

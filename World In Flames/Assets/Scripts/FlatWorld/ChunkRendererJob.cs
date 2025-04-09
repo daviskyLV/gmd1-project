@@ -3,7 +3,7 @@ using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 
-public struct MeshQuad
+public struct MeshQuadOLD
 {
     public int3 TriOne;
     public int3 TriTwo;
@@ -43,7 +43,7 @@ public struct ChunkRendererJob : IJobParallelFor
     /// <summary>
     /// Triangle definition for mesh, must be width*height  ////(width-1)*(height-1)*6
     /// </summary>
-    public NativeArray<MeshQuad> Quads;
+    public NativeArray<MeshQuadOLD> Quads;
 
     public void Execute(int index)
     {
@@ -56,14 +56,14 @@ public struct ChunkRendererJob : IJobParallelFor
         if (x < Width - 1 && y < height - 1)
         {
             // A stupid workaround cuz mf index cant access anything thats not on same index
-            Quads[index] = new MeshQuad {
+            Quads[index] = new MeshQuadOLD {
                 TriOne = new(index, index + Width + 1, index + 1),
                 TriTwo = new(index, index + Width, index + Width + 1),
                 Valid = true
             };
         }
         else {
-            Quads[index] = new MeshQuad {
+            Quads[index] = new MeshQuadOLD {
                 TriOne = new(1,2,3),
                 TriTwo = new(1,2,3),
                 Valid = false
