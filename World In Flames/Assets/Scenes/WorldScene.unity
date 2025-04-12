@@ -476,7 +476,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: eb3d1450095ffc54790b5ab804631103, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  resolution: 16
+  resolution: 28
+  seaLevel: 0.117
+  testMaterial: {fileID: 2100000, guid: ea9297de70ae2e44c8fb4f69b831d472, type: 2}
 --- !u!4 &1541289174
 Transform:
   m_ObjectHideFlags: 0

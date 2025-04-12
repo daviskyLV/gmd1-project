@@ -21,12 +21,21 @@ public struct PlanetFaceMeshJob : IJobParallelFor
     /// </summary>
     [ReadOnly]
     public int Width;
+    /// <summary>
+    /// Precomputed points on unit sphere
+    /// </summary>
     [ReadOnly]
-    public float3 LocalUp;
+    public NativeArray<float3> PointsOnUnitSphere;
+    /// <summary>
+    /// Vertex height = PointOnUnitSphere * HeightMultiplier
+    /// </summary>
     [ReadOnly]
-    public float3 AxisA;
+    public NativeArray<float> PointHeight;
+    /// <summary>
+    /// Minimum height for point before it appears under water
+    /// </summary>
     [ReadOnly]
-    public float3 AxisB;
+    public float WaterLevel;
 
     /// <summary>
     /// Mesh vertices, must be map's width^2
@@ -41,12 +50,7 @@ public struct PlanetFaceMeshJob : IJobParallelFor
     {
         var x = index % Width;
         var y = index / Width;
-        var wm1 = Width - 1;
-
-        float2 percent = new((float)x / wm1, (float)y / wm1);
-        float3 pointOnUnitCube = LocalUp + (percent.x - 0.5f) * 2 * AxisA + (percent.y - 0.5f) * 2 * AxisB;
-        float3 pointOnUnitSphere = pointOnUnitCube * math.rsqrt(math.lengthsq(pointOnUnitCube)); // same as vector3.normalized
-        Vertices[index] = pointOnUnitSphere;
+        Vertices[index] = PointsOnUnitSphere[index] * math.max(PointHeight[index], WaterLevel) + 0.1f;
 
         if (x != Width - 1 && y != Width - 1)
         {
