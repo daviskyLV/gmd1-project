@@ -4,33 +4,10 @@ using Unity.Jobs;
 using Unity.Mathematics;
 
 /// <summary>
-/// How should the X and Y axis value multipliers influence each other
-/// </summary>
-public enum AxisValueMultiplier
-{
-    /// <summary>
-    /// value = value * x multiplier * y multiplier
-    /// </summary>
-    Additive,
-    /// <summary>
-    /// value = value * min(x multiplier, y multiplier)
-    /// </summary>
-    Lowest,
-    /// <summary>
-    /// value = value * max(x multiplier, y multiplier)
-    /// </summary>
-    Highest,
-    /// <summary>
-    /// value = value * ((x multiplier + y multiplier) / 2)
-    /// </summary>
-    Average
-}
-
-/// <summary>
 /// Used to normalize values to 0-1
 /// </summary>
 [BurstCompile]
-public struct NoiseNormalizerJob : IJobParallelFor
+public struct NoiseChunkNormalizerJob : IJobParallelFor
 {
     public NativeArray<float> inputValues;
     [ReadOnly]
@@ -77,7 +54,7 @@ public struct NoiseNormalizerJob : IJobParallelFor
 
         switch (axisValueMultiplier)
         {
-            case AxisValueMultiplier.Additive:
+            case AxisValueMultiplier.Multiplicative:
                 inputValues[index] *= (xAxisMultipliers[globalX] * yAxisMultipliers[globalY]);
                 break;
             case AxisValueMultiplier.Lowest:

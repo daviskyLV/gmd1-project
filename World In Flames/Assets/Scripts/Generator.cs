@@ -72,15 +72,15 @@ public static class Generator
                 }
 
                 // Setting up noise
-                var noiseSettings = new NoiseJobSettings
+                var noiseSettings = new SimplexNoiseJobSettings
                 {
                     Width = chunkSize,
                     Height = chunkSize,
                     Offset = new float2(offset.x, offset.y),
-                    Scale = scale,
+                    //Scale = scale,
                     Octaves = octaves,
                     Persistence = persistence,
-                    Lacunarity = lacunarity,
+                    Roughness = lacunarity,
                     OctaveOffsets = octaveOffsets
                 };
 
@@ -113,7 +113,7 @@ public static class Generator
         // Calculating min and max values
         Utilities.GetMinMaxValues(computedNoise, out float minNoise, out float maxNoise);
         // Normalizing noise values
-        var normalizationJob = new NoiseNormalizerJob
+        var normalizationJob = new NoiseChunkNormalizerJob
         {
             minValue = minNoise,
             maxValue = maxNoise,
@@ -133,5 +133,63 @@ public static class Generator
         yAxisMultipliers.Dispose();
 
         return computedNoise;
+    }
+
+    /// <summary>
+    /// Generates a worley noise, by default normalized 0-1, can optionally be unnormalized
+    /// </summary>
+    /// <param name="width">Noise map width</param>
+    /// <param name="height">Noise map height</param>
+    /// <param name="seed">Seed to use for generation</param>
+    /// <param name="offset">General offset</param>
+    /// <param name="roughness">How rough should the noise be</param>
+    /// <param name="points">How many worley points to place on the grid, minimum 1</param>
+    /// <param name="normalized">Whether the values should be returned as values between 0 and 1</param>
+    /// <returns></returns>
+    public static float[] GenerateWorleyNoise(int width, int height, uint seed, Vector2 offset, float roughness, int points, bool normalized = true)
+    {
+        if (points < 1)
+            points = 1;
+
+        var inputPoints = new NativeArray<int2>(points, Allocator.TempJob);
+        var outputNative = new NativeArray<float>(width*height, Allocator.TempJob);
+        // Placing down worley points
+        var rng = new Unity.Mathematics.Random(seed);
+        for (int i = 0; i < points; i++)
+        {
+            var rngX = rng.NextInt(0, width);
+            var rngY = rng.NextInt(0, height);
+            inputPoints[i] = new(rngX, rngY);
+        }
+
+        var worleyJob = new WorleyNoiseJob {
+            Width = width,
+            Offset = new(offset.x, offset.y),
+            Roughness = roughness,
+            WorleyPointPositions = inputPoints,
+            GeneratedMap = outputNative
+        };
+        var worleyHandle = worleyJob.Schedule(width*height, 64);
+        worleyHandle.Complete();
+
+        if (normalized) {
+            // Normalizing values in range 0-1
+            Utilities.GetMinMaxValues(outputNative.ToArray(), out float min, out float max);
+            var normalJob = new NormalizerJob
+            {
+                MinValue = min,
+                MaxValue = max,
+                Datapoints = outputNative
+            };
+            var normalHandle = normalJob.Schedule(width * height, 64);
+            normalHandle.Complete();
+        }
+
+        // Extracting generated map and cleaning up arrays
+        var output = outputNative.ToArray();
+        outputNative.Dispose();
+        inputPoints.Dispose();
+
+        return output;
     }
 }

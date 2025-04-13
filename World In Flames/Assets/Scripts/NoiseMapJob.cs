@@ -4,7 +4,7 @@ using Unity.Jobs;
 using Unity.Mathematics;
 
 [BurstCompile]
-public struct NoiseJobSettings
+public struct SimplexNoiseJobSettings
 {
     /// <summary>
     /// Map width, must be at least 1
@@ -22,11 +22,6 @@ public struct NoiseJobSettings
     [ReadOnly]
     public float2 Offset;
     /// <summary>
-    /// Map scale, should be above 0. Higher value means smoother transition
-    /// </summary>
-    [ReadOnly]
-    public float Scale;
-    /// <summary>
     /// How many octaves to apply to noise, must be at least 1
     /// </summary>
     [ReadOnly]
@@ -37,10 +32,10 @@ public struct NoiseJobSettings
     [ReadOnly]
     public float Persistence;
     /// <summary>
-    /// How chaotic does the map get, must be at least 1. Similar to scale
+    /// How chaotic does the map get, higher values mean more rough
     /// </summary>
     [ReadOnly]
-    public float Lacunarity;
+    public float Roughness;
     /// <summary>
     /// Precomputed octave offsets.
     /// </summary>
@@ -55,7 +50,7 @@ public struct NoiseJobSettings
 public struct SimplexMapJob : IJobParallelFor
 {
     [ReadOnly]
-    public NoiseJobSettings Settings;
+    public SimplexNoiseJobSettings Settings;
 
     /// <summary>
     /// Output after running the job
@@ -72,14 +67,14 @@ public struct SimplexMapJob : IJobParallelFor
         var noiseHeight = 0.0f;
         for (int i = 0; i < Settings.Octaves; i++)
         {
-            var sampleX = (x + Settings.Offset.x + Settings.OctaveOffsets[i].x) / Settings.Scale * frequency;
-            var sampleY = (y + Settings.Offset.y + Settings.OctaveOffsets[i].y) / Settings.Scale * frequency;
+            var sampleX = (x + Settings.Offset.x + Settings.OctaveOffsets[i].x) * frequency;
+            var sampleY = (y + Settings.Offset.y + Settings.OctaveOffsets[i].y) * frequency;
 
             var simplexValue = noise.snoise(new float2(sampleX, sampleY));
             noiseHeight += simplexValue * amplitude;
 
             amplitude *= Settings.Persistence;
-            frequency *= Settings.Lacunarity;
+            frequency *= Settings.Roughness;
         }
 
         ComputedNoise[index] = noiseHeight; //math.clamp(noiseHeight, -1f, 1f);
