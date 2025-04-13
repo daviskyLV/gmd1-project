@@ -7,14 +7,14 @@ public class Nation
     public Color Color { get; private set; }
     public int Id { get; }
     public string Name { get; set; }
-    public List<Province> OwnedProvinces { get; private set; }
-    public Province Capital { get; private set; }
+    public List<ProvinceOLD> OwnedProvinces { get; private set; }
+    public ProvinceOLD Capital { get; private set; }
     /// <summary>
     /// Fired whenever color changes
     /// </summary>
     public event Action<Color> ColorChanged;
 
-    public Nation(int id, Color color, string name, List<Province> ownedProvinces, Province capital)
+    public Nation(int id, Color color, string name, List<ProvinceOLD> ownedProvinces, ProvinceOLD capital)
     {
         Id = id;
         Name = name;

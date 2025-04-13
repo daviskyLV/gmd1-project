@@ -19,7 +19,7 @@ public class MapChunkRenderer : MonoBehaviour
     private MeshCollider meshCollider;
     private MeshFilter meshFilter;
 
-    public Province[] Provinces { get; private set; }
+    public ProvinceOLD[] Provinces { get; private set; }
     public int Width { get; private set; }
     public float HeightMultiplier { get; private set; }
     public LevelOfDetail LevelOfDetail { get; private set; }
@@ -43,7 +43,7 @@ public class MapChunkRenderer : MonoBehaviour
         meshCollider = GetComponent<MeshCollider>();
     }
 
-    public void Setup(Province[] provinces, int width, float heightMultiplier, LevelOfDetail initialLOD)
+    public void Setup(ProvinceOLD[] provinces, int width, float heightMultiplier, LevelOfDetail initialLOD)
     {
         Provinces = provinces;
         HeightMultiplier = heightMultiplier;

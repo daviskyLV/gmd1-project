@@ -54,7 +54,7 @@ public class WorldManager : MonoBehaviour
     /// <summary>
     /// All the provinces in the world, key being their location on the grid
     /// </summary>
-    private Dictionary<Vector2Int, Province> worldProvinces;
+    private Dictionary<Vector2Int, ProvinceOLD> worldProvinces;
     /// <summary>
     /// Nations in the world (also defeated), key being their id
     /// </summary>
@@ -101,15 +101,15 @@ public class WorldManager : MonoBehaviour
         );
 
         // Generating map chunks
-        var freeGndProvinces = new List<Province>();
-        var uncheckedProvinces = new Dictionary<Vector2Int, Province>(); // ground provinces which may still have uninitialized adjacent owners
+        var freeGndProvinces = new List<ProvinceOLD>();
+        var uncheckedProvinces = new Dictionary<Vector2Int, ProvinceOLD>(); // ground provinces which may still have uninitialized adjacent owners
         var chSizeSq = chunkSize * chunkSize;
         var chScaleXchSize = chunkScale * chunkSize;
         for (int chunkY = 0; chunkY < worldHeightChunks; chunkY++)
         {
             for (int chunkX = 0; chunkX < worldWidthChunks; chunkX++)
             {
-                var provinceArr = new Province[chunkSize * chunkSize];
+                var provinceArr = new ProvinceOLD[chunkSize * chunkSize];
                 for (int y = 0; y < chunkSize; y++)
                 {
                     for (int x = 0; x < chunkSize; x++)
@@ -120,7 +120,7 @@ public class WorldManager : MonoBehaviour
                         var provY = chunkY * (chunkSize-1) + y; // province global coordinates
                         var provGlobCoord = new Vector2Int(provX, provY);
                         // Getting/creating the provinces
-                        Province province;
+                        ProvinceOLD province;
                         if (worldProvinces.ContainsKey(provGlobCoord))
                         {
                             // Already exists
@@ -131,16 +131,16 @@ public class WorldManager : MonoBehaviour
                             if (generatedHeight[curCompI] <= waterLevel)
                             {
                                 // Province under water, no owner
-                                province = new Province(
+                                province = new ProvinceOLD(
                                     provGlobCoord, waterLevel, generatedHumidity[curCompI], generatedTemperature[curCompI],
-                                    Color.Lerp(deepWaterColor, shallowWaterColor, generatedHeight[curCompI]/waterLevel), ProvinceColor.ColorOverride, true
+                                    Color.Lerp(deepWaterColor, shallowWaterColor, generatedHeight[curCompI]/waterLevel), ProvinceOLDColor.ColorOverride, true
                                 );
                             } else
                             {
                                 // Province above water
-                                province = new Province(
+                                province = new ProvinceOLD(
                                     provGlobCoord, generatedHeight[curCompI], generatedHumidity[curCompI], generatedTemperature[curCompI],
-                                    defaultWorldColor, ProvinceColor.OwnerColor, false
+                                    defaultWorldColor, ProvinceOLDColor.OwnerColor, false
                                 );
                                 freeGndProvinces.Add( province );
                                 uncheckedProvinces[province.Position] = province;
@@ -179,10 +179,10 @@ public class WorldManager : MonoBehaviour
 
         // Generating countries
         var totalBias = 0; // later when assigning extra territory
-        var borderProvinces = new Dictionary<Vector2Int, Province>(); // provinces bordering unchecked land
+        var borderProvinces = new Dictionary<Vector2Int, ProvinceOLD>(); // provinces bordering unchecked land
         for (int i = 0; i < starterNations.Length; i++)
         {
-            var owned = new List<Province>();
+            var owned = new List<ProvinceOLD>();
             var nation = new Nation(i, starterNations[i].color, starterNations[i].name, owned, null);
             nations[i] = nation;
             totalBias += starterNations[i].territoryBias;
@@ -217,7 +217,7 @@ public class WorldManager : MonoBehaviour
                 break;
             }
 
-            Province prov = null;
+            ProvinceOLD prov = null;
             List<Vector2Int> keys;
             if (borderProvinces.Count <= 0)
             {
@@ -338,7 +338,7 @@ public class WorldManager : MonoBehaviour
     }
 
     private bool NationBorderExpander(
-        Dictionary<Vector2Int, Province> uncheckedProvinces, Dictionary<Vector2Int, Province> borderProvinces, Vector2Int provPos, Nation newOwner
+        Dictionary<Vector2Int, ProvinceOLD> uncheckedProvinces, Dictionary<Vector2Int, ProvinceOLD> borderProvinces, Vector2Int provPos, Nation newOwner
     )
     {
         if (uncheckedProvinces.ContainsKey(provPos))
