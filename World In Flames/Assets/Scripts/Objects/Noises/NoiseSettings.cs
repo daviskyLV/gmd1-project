@@ -29,7 +29,7 @@ public class NoiseSettings : ScriptableObject
     [Tooltip("Multiplication curve to use for Y axis")]
     private AnimationCurve multiplicationCurveY;
     [SerializeField]
-    private AxisValueMultiplier valueMultiplier;
+    private ValueMultiplier valueMultiplier;
 
     public Vector2 GetOffset() { return offset; }
     public int GetOctaves() { return octaves; }
@@ -39,5 +39,5 @@ public class NoiseSettings : ScriptableObject
     public uint GetSeed() { return seed; }
     public AnimationCurve GetMultiplicationCurveX() { return multiplicationCurveX; }
     public AnimationCurve GetMultiplicationCurveY() { return multiplicationCurveY; }
-    public AxisValueMultiplier GetValueMultiplier() { return valueMultiplier; }
+    public ValueMultiplier GetValueMultiplier() { return valueMultiplier; }
 }

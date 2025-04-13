@@ -22,9 +22,8 @@ public static class Generator
     /// <returns>All chunks points put into a single array, with chunk row major order</returns>
     public static float[] GenerateNoiseForChunks(
         int chunkAmountX, int chunkAmountY, int chunkSize, uint seed, int octaves, Vector2 offset, float scale, float persistence, float lacunarity,
-        AnimationCurve xAxisMultiplierCurve, AnimationCurve yAxisMultiplierCurve, AxisValueMultiplier axisValueMultiplier
-    )
-    {
+        AnimationCurve xAxisMultiplierCurve, AnimationCurve yAxisMultiplierCurve, ValueMultiplier axisValueMultiplier
+    ) {
         var chSizeSq = chunkSize * chunkSize;
         var rng = new Unity.Mathematics.Random(seed);
         var rngX = rng.NextFloat(-100000, 100000);
@@ -145,9 +144,12 @@ public static class Generator
     /// <param name="roughness">How rough should the noise be</param>
     /// <param name="points">How many worley points to place on the grid, minimum 1</param>
     /// <param name="normalized">Whether the values should be returned as values between 0 and 1</param>
-    /// <returns></returns>
-    public static float[] GenerateWorleyNoise(int width, int height, uint seed, Vector2 offset, float roughness, int points, bool normalized = true)
-    {
+    /// <param name="normalizationEasing">How should the values be normalized</param>
+    /// <param name="inverted">Whether it should be inverted, only applies if normalization is true</param>
+    /// <returns>Generated float array with row major order of values</returns>
+    public static float[] GenerateWorleyNoise(
+        int width, int height, uint seed, Vector2 offset, float roughness, int points, bool normalized = true, NormalizationEasingFunction normalizationEasing = NormalizationEasingFunction.Linear, bool inverted = false
+    ) {
         if (points < 1)
             points = 1;
 
@@ -179,7 +181,9 @@ public static class Generator
             {
                 MinValue = min,
                 MaxValue = max,
-                Datapoints = outputNative
+                Datapoints = outputNative,
+                EasingFunction = normalizationEasing,
+                Invert = inverted
             };
             var normalHandle = normalJob.Schedule(width * height, 64);
             normalHandle.Complete();
@@ -191,5 +195,82 @@ public static class Generator
         inputPoints.Dispose();
 
         return output;
+    }
+
+    public static void GenerateContinentalMap(
+        int width, int height, uint seed, Vector2 offset, int desiredContinents, int octaves, float roughness, out float[] heightmap
+    ) {
+        // ensuring safe values
+        if (width < 1)
+            width = 1;
+        if (height < 1)
+            height = 1;
+        if (octaves < 1)
+            octaves = 1;
+
+        // generating simplex noise heightmap
+        var rng = new Unity.Mathematics.Random(seed);
+        var octaveOffsets = new NativeArray<float2>(octaves, Allocator.TempJob);
+        for (int i = 0; i < octaves; i++)
+        {
+            octaveOffsets[i] = new float2(
+                offset.x + rng.NextFloat(-100000, 100000),
+                offset.y + rng.NextFloat(-100000, 100000)
+            );
+        }
+
+        // Setting up noise
+        var noiseSettings = new SimplexNoiseJobSettings
+        {
+            Width = width,
+            Height = height,
+            Offset = new float2(offset.x, offset.y),
+            Octaves = octaves,
+            Persistence = 0.5f,
+            Roughness = roughness,
+            OctaveOffsets = octaveOffsets
+        };
+        var simplexComputed = new NativeArray<float>(width*height, Allocator.TempJob);
+        var simplexNoiseJob = new SimplexMapJob
+        {
+            Settings = noiseSettings,
+            ComputedNoise = simplexComputed
+        };
+        var simplexHandle = simplexNoiseJob.Schedule(simplexComputed.Length, 64);
+
+        // Generating worley noise continents and making sure simplex noise finishes
+        var worleyContinents = GenerateWorleyNoise(width, height, seed, offset, roughness, 3, true, NormalizationEasingFunction.EaseInOutCubic);
+        simplexHandle.Complete();
+
+        // small cleanup
+        octaveOffsets.Dispose();
+
+        // combining both noises
+        var combinerJob = new CombinatorJob
+        {
+            InputA = simplexComputed,
+            InputB = new(worleyContinents, Allocator.TempJob),
+            CombinationTechnique = ValueMultiplier.Multiplicative,
+            Output = simplexComputed // doing in place
+        };
+        var combinerHandle = combinerJob.Schedule(simplexComputed.Length, 64);
+        combinerHandle.Complete();
+        combinerJob.InputB.Dispose(); // worley combined, disposing
+
+        // Scaling back to 0-1
+        Utilities.GetMinMaxValues(simplexComputed.ToArray(), out float minCombined, out float maxCombined);
+        var rescaleJob = new NormalizerJob {
+            MinValue = minCombined,
+            MaxValue = maxCombined,
+            Datapoints = simplexComputed,
+            EasingFunction = NormalizationEasingFunction.Linear,
+            Invert = false
+        };
+        var rescaleHandle = rescaleJob.Schedule(simplexComputed.Length, 64);
+        rescaleHandle.Complete();
+
+        // final stuff
+        heightmap = simplexComputed.ToArray();
+        simplexComputed.Dispose();
     }
 }

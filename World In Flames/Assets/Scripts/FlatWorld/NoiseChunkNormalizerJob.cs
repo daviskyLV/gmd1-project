@@ -28,7 +28,7 @@ public struct NoiseChunkNormalizerJob : IJobParallelFor
     /// How the axis multipliers should interact
     /// </summary>
     [ReadOnly]
-    public AxisValueMultiplier axisValueMultiplier;
+    public ValueMultiplier axisValueMultiplier;
     [ReadOnly]
     public int chunkAmntX;
     [ReadOnly]
@@ -54,16 +54,16 @@ public struct NoiseChunkNormalizerJob : IJobParallelFor
 
         switch (axisValueMultiplier)
         {
-            case AxisValueMultiplier.Multiplicative:
+            case ValueMultiplier.Multiplicative:
                 inputValues[index] *= (xAxisMultipliers[globalX] * yAxisMultipliers[globalY]);
                 break;
-            case AxisValueMultiplier.Lowest:
+            case ValueMultiplier.Lowest:
                 inputValues[index] *= math.min(xAxisMultipliers[globalX], yAxisMultipliers[globalY]);
                 break;
-            case AxisValueMultiplier.Highest:
+            case ValueMultiplier.Highest:
                 inputValues[index] *= math.max(xAxisMultipliers[globalX], yAxisMultipliers[globalY]);
                 break;
-            case AxisValueMultiplier.Average:
+            case ValueMultiplier.Average:
                 inputValues[index] *= ((xAxisMultipliers[globalX] + yAxisMultipliers[globalY]) / 2f);
                 break;
             default:

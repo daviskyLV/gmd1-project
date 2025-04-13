@@ -1,7 +1,7 @@
 /// <summary>
-/// How should the X and Y axis value multipliers influence each other
+/// How should the values interact between each other, eg. x and y
 /// </summary>
-public enum AxisValueMultiplier
+public enum ValueMultiplier
 {
     /// <summary>
     /// value = value * x multiplier * y multiplier
