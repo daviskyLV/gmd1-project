@@ -1,7 +1,7 @@
 /// <summary>
-/// What kind of function should the values follow when normalizing
+/// What kind of function should the values follow
 /// </summary>
-public enum NormalizationEasingFunction
+public enum EasingFunction
 {
     Linear,
     EaseInSine,

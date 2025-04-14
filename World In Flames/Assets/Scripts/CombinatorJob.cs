@@ -20,20 +20,6 @@ public struct CombinatorJob : IJobParallelFor
 
     public void Execute(int index)
     {
-        switch (CombinationTechnique)
-        {
-            case ValueMultiplier.Multiplicative:
-                Output[index] = InputA[index] * InputB[index];
-                break;
-            case ValueMultiplier.Lowest:
-                Output[index] = math.min(InputA[index], InputB[index]);
-                break;
-            case ValueMultiplier.Highest:
-                Output[index] = math.max(InputA[index], InputB[index]);
-                break;
-            default:
-                Output[index] = (InputA[index] + InputB[index]) / 2f;
-                break;
-        }
+        Output[index] = Utilities.CalculateValueMultiplier(InputA[index], InputB[index], CombinationTechnique);
     }
 }

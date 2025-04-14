@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
@@ -6,6 +8,75 @@ using UnityEngine;
 
 public static class Utilities
 {
+    [BurstCompile]
+    public static float CalculateValueMultiplier(float valueA, float valueB, ValueMultiplier multiplierType)
+    {
+        switch (multiplierType)
+        {
+            case ValueMultiplier.Multiplicative:
+                return valueA * valueB;
+            case ValueMultiplier.Lowest:
+                return math.min(valueA, valueB);
+            case ValueMultiplier.Highest:
+                return math.max(valueA, valueB);
+            default:
+                // Same as average
+                return (valueA + valueB) / 2f;
+        }
+    }
+
+    [BurstCompile]
+    public static float CalculateEasingFunction(float progress, EasingFunction easingFunction)
+    {
+        // Easing function implementations from https://easings.net/
+        switch (easingFunction)
+        {
+            case EasingFunction.EaseInSine:
+                return 1 - math.cos((progress * math.PI) / 2f);
+            case EasingFunction.EaseOutSine:
+                return math.sin((progress * math.PI) / 2f);
+            case EasingFunction.EaseInOutSine:
+                return -(math.cos(math.PI * progress) - 1) / 2f;
+            case EasingFunction.EaseInCubic:
+                return math.pow(progress, 3);
+            case EasingFunction.EaseOutCubic:
+                return 1 - math.pow(1 - progress, 3);
+            case EasingFunction.EaseInOutCubic:
+                return math.select(
+                    1 - math.pow(-2 * progress + 2, 3) / 2f,
+                    4 * math.pow(progress, 3),
+                    progress < 0.5f
+                );
+            default:
+                // Same as linear
+                return progress;
+        }
+    }
+
+    /// <summary>
+    /// Calculates the destination coordinate when moving across the world
+    /// </summary>
+    /// <param name="worldWidth">World width</param>
+    /// <param name="worldHeight">World height</param>
+    /// <param name="startCoord">Starting coordinate</param>
+    /// <param name="direction">Direction to go, eg. vec2(-1, 0) goes 1 x coordinate left</param>
+    /// <returns>The new destination, wrapped to the other side if needed</returns>
+    public static Vector2Int GetDestinationCoordWithWorldWrap(int worldWidth, int worldHeight, Vector2Int startCoord, Vector2Int direction)
+    {
+        var newCoord = startCoord + direction;
+        if (newCoord.x < 0)
+            newCoord.x = worldWidth - newCoord.x % worldWidth;
+        else
+            newCoord.x = newCoord.x % worldWidth;
+
+        if (newCoord.y < 0)
+            newCoord.y = worldHeight - newCoord.y % worldHeight;
+        else
+            newCoord.y = newCoord.y % worldHeight;
+
+        return newCoord;
+    }
+
     /// <summary>
     /// Get minimum and maximum float value from a large input array using multithreading
     /// </summary>
