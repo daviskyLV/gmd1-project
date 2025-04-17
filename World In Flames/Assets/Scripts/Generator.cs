@@ -257,13 +257,14 @@ public static class Generator
         // combining both noises
         var combinerJob = new CombinatorJob
         {
-            InputA = computedHeightmap,
+            InputA = new(computedHeightmap, Allocator.TempJob),
             InputB = new(worleyContinents, Allocator.TempJob),
             CombinationTechnique = ValueMultiplier.Multiplicative,
             Output = computedHeightmap // doing in place
         };
         var combinerHandle = combinerJob.Schedule(computedHeightmap.Length, 64);
         combinerHandle.Complete();
+        combinerJob.InputA.Dispose(); // duplicate
         combinerJob.InputB.Dispose(); // worley combined, disposing
 
         // Scaling back to 0-1

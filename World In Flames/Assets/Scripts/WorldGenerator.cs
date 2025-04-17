@@ -6,6 +6,8 @@ public class WorldGenerator : MonoBehaviour
 {
     [SerializeField]
     private bool regenerate = false;
+    [SerializeField]
+    private GameObject chunkPrefab;
     [Header("Base map generation")]
     [SerializeField]
     private WorldSettings worldSettings;
@@ -14,6 +16,7 @@ public class WorldGenerator : MonoBehaviour
     [SerializeField]
     private TemperatureSettings temperatureSettings;
 
+    private const int CHUNK_SIZE = 17; // chunk size in vertices for each side, including bordering vertices
     private Dictionary<Vector2Int, Province> provinces;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -43,7 +46,15 @@ public class WorldGenerator : MonoBehaviour
         provinces.Clear();
 
         Generator.GenerateContinentalMap(worldSettings, heightmapSettings, temperatureSettings, out float[] generatedHeightmap, out Province[] generatedProvinces);
+        var hdChunk = Instantiate(chunkPrefab, transform);
+        var hdchRender = hdChunk.GetComponent<ChunkRenderer>();
+        StartCoroutine(hdchRender.RegenerateMesh(generatedHeightmap, worldSettings.GetSeaLevel(), 1));
+        hdChunk.transform.position = new();
 
+        var lowChunk = Instantiate(chunkPrefab, transform);
+        var lowchRender = lowChunk.GetComponent<ChunkRenderer>();
+        StartCoroutine(lowchRender.RegenerateMesh(generatedHeightmap, worldSettings.GetSeaLevel(), 4));
+        lowChunk.transform.position = new(20, 0, 0);
 
         yield return null;
     }
