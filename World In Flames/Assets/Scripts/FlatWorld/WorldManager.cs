@@ -161,11 +161,11 @@ public class WorldManager : MonoBehaviour
                     0,
                     (chunkY - worldHeightChunks / 2f) * chScaleXchSize - chunkScale * chunkY
                 );
-                var chunkRenderer = chunk.GetComponent<MapChunkRenderer>();
+                var chunkRenderer = chunk.GetComponent<MapChunkRendererOLD>();
                 chunkRenderer.Setup(provinceArr, chunkSize, heightMultiplier, LevelOfDetail.ONE);
                 chunkRenderer.RecalculateTexture();
                 chunkRenderer.ReloadTexture();
-                chunkRenderer.RecalculateMesh();
+                //chunkRenderer.RecalculateMesh();
                 chunkRenderer.ApplyMesh();
             }
         }

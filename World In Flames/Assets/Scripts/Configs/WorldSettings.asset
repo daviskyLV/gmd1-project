@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   seed: 1337
   desiredContinents: 3
-  mapWidth: 200
-  mapHeight: 100
-  mapResolution: 3
+  mapWidth: 17
+  mapHeight: 17
+  mapResolution: 1
   seaLevel: 0.1

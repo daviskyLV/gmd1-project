@@ -3,16 +3,6 @@ using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 
-public struct MeshQuad
-{
-    public int3 TriOne;
-    public int3 TriTwo;
-    /// <summary>
-    /// Whether the quad should be used or not
-    /// </summary>
-    public bool Valid;
-}
-
 [BurstCompile]
 public struct PlanetFaceMeshJob : IJobParallelFor
 {

@@ -26,6 +26,15 @@ public static class Utilities
     }
 
     [BurstCompile]
+    public static float3 CalculateNormal(float3 pointA, float3 pointB, float3 pointC)
+    {
+        var sideAB = pointB - pointA;
+        var sideAC = pointC - pointA;
+        var normalDotProd = math.normalize(math.cross(sideAB, sideAC));
+        return normalDotProd;
+    }
+
+    [BurstCompile]
     public static float CalculateEasingFunction(float progress, EasingFunction easingFunction)
     {
         // Easing function implementations from https://easings.net/

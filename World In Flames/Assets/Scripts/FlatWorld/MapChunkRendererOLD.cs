@@ -13,7 +13,7 @@ public enum LevelOfDetail
 
 [RequireComponent(typeof(MeshCollider))]
 [RequireComponent(typeof(Renderer))]
-public class MapChunkRenderer : MonoBehaviour
+public class MapChunkRendererOLD : MonoBehaviour
 {
     private Renderer meshRenderer;
     private MeshCollider meshCollider;
@@ -107,64 +107,63 @@ public class MapChunkRenderer : MonoBehaviour
         meshRenderer.material.mainTexture = chunkTexture;
     }
 
-    public void RecalculateMesh() {
-        var height = Provinces.Length / Width;
+    //public void RecalculateMesh() {
+    //    var height = Provinces.Length / Width;
 
-        var heights = new NativeArray<float>(Provinces.Length, Allocator.TempJob);
-        for (int i = 0; i < Provinces.Length; i++)
-        {
-            heights[i] = Provinces[i].Height;
-        }
+    //    var heights = new NativeArray<float>(Provinces.Length, Allocator.TempJob);
+    //    for (int i = 0; i < Provinces.Length; i++)
+    //    {
+    //        heights[i] = Provinces[i].Height;
+    //    }
 
-        // Creating a job and executing it
-        var job = new ChunkRendererJob {
-            ProvinceHeights = heights,
-            Width = Width,
-            Multiplier = HeightMultiplier,
-            Vertices = new(Provinces.Length, Allocator.TempJob),
-            UVs = new(Provinces.Length, Allocator.TempJob),
-            Quads = new(Provinces.Length, Allocator.TempJob)
-        };
-        var handle = job.Schedule(Provinces.Length, 64);
-        handle.Complete();
-        job.ProvinceHeights.Dispose();
+    //    // Creating a job and executing it
+    //    var job = new ChunkRendererJob {
+    //        Heightmap = heights,
+    //        Width = Width,
+    //        Vertices = new(Provinces.Length, Allocator.TempJob),
+    //        //UVs = new(Provinces.Length, Allocator.TempJob),
+    //        Quads = new(Provinces.Length, Allocator.TempJob)
+    //    };
+    //    var handle = job.Schedule(Provinces.Length, 64);
+    //    handle.Complete();
+    //    job.Heightmap.Dispose();
 
-        // Copying over the computed values
-        meshUVs = new Vector2[job.UVs.Length];
-        for (int i = 0; i < job.UVs.Length; i++)
-        {
-            meshUVs[i] = job.UVs[i];
-        }
-        job.UVs.Dispose();
+    //    // Copying over the computed values
+    //    //meshUVs = new Vector2[job.UVs.Length];
+    //    //for (int i = 0; i < job.UVs.Length; i++)
+    //    //{
+    //    //    meshUVs[i] = job.UVs[i];
+    //    //}
+    //    //job.UVs.Dispose();
 
-        meshVertices = new Vector3[job.Vertices.Length];
-        for (int i = 0; i < job.Vertices.Length; i++)
-        {
-            meshVertices[i] = job.Vertices[i];
-        }
-        job.Vertices.Dispose();
+    //    meshVertices = new Vector3[job.Vertices.Length];
+    //    for (int i = 0; i < job.Vertices.Length; i++)
+    //    {
+    //        meshVertices[i] = job.Vertices[i];
+    //    }
+    //    job.Vertices.Dispose();
 
-        meshTriangles = new int[(Width - 1) * (height - 1) * 6];
-        var curTriangles = 0;
-        for (int i = 0; i < job.Quads.Length; i++)
-        {
-            var q = job.Quads[i];
-            if (!q.Valid)
-                continue;
+    //    meshTriangles = new int[(Width - 1) * (height - 1) * 6];
+    //    var curTriangles = 0;
+    //    for (int i = 0; i < job.Quads.Length; i++)
+    //    {
+    //        var q = job.Quads[i];
+    //        if (!q.Valid)
+    //            continue;
 
-            // Triangle one
-            meshTriangles[curTriangles] = q.TriOne.x;
-            meshTriangles[curTriangles+1] = q.TriOne.y;
-            meshTriangles[curTriangles+2] = q.TriOne.z;
-            // Triangle two
-            meshTriangles[curTriangles + 3] = q.TriTwo.x;
-            meshTriangles[curTriangles + 4] = q.TriTwo.y;
-            meshTriangles[curTriangles + 5] = q.TriTwo.z;
+    //        // Triangle one
+    //        meshTriangles[curTriangles] = q.TriOne.x;
+    //        meshTriangles[curTriangles+1] = q.TriOne.y;
+    //        meshTriangles[curTriangles+2] = q.TriOne.z;
+    //        // Triangle two
+    //        meshTriangles[curTriangles + 3] = q.TriTwo.x;
+    //        meshTriangles[curTriangles + 4] = q.TriTwo.y;
+    //        meshTriangles[curTriangles + 5] = q.TriTwo.z;
 
-            curTriangles += 6;
-        }
-        job.Quads.Dispose();
-    }
+    //        curTriangles += 6;
+    //    }
+    //    job.Quads.Dispose();
+    //}
 
     /// <summary>
     /// Apply the current calculated mesh
