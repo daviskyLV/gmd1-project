@@ -294,14 +294,18 @@ public struct ChunkRendererJob : IJobParallelFor
 
     private readonly float3 HmapCoord(int index)
     {
-        return new(index % HeightmapSize, Heightmap[index], index / HeightmapSize);
+        return new(index % HeightmapSize, GetHeightAt(index), index / HeightmapSize);
     }
 
     private readonly float GetHeightAt(int2 coord)
     {
         var hmapIndex = (coord.y + 1) * HeightmapSize + coord.x + 1;
         return math.max(SeaLevel, Heightmap[hmapIndex]);
-    } 
+    }
+    private readonly float GetHeightAt(int hmapIndex)
+    {
+        return math.max(SeaLevel, Heightmap[hmapIndex]);
+    }
 
     private readonly VerticeType CalculateVerticeType(int2 innerI) {
         var rsize = VxRowSize[0];

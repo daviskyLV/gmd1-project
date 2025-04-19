@@ -18,12 +18,13 @@ public class HeightmapSettings : ScriptableObject, IHeightmapSettings
     [SerializeField]
     private float smoothness = 4.20f;
     [SerializeField]
-    private float worleyPower = 1f;
+    [Range(0f, 1f)]
+    private float continentStartImpact = 1f;
 
     public Vector2 GetOffset() {  return offset; }
     public int GetOctaves() { return octaves; }
     public float GetPersistence() { return persistence; }
     public float GetRoughness() { return roughness; }
     public float GetSmoothness() { return smoothness; }
-    public float GetWorleyPower() { return worleyPower; }
+    public float GetContinentStartImpact() { return continentStartImpact; }
 }

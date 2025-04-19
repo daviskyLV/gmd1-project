@@ -69,11 +69,11 @@ public struct SimplexMapJob : IJobParallelFor
         var noiseHeight = 0.0f;
         for (int i = 0; i < Settings.Octaves; i++)
         {
-            var sampleX = (x + Settings.Offset.x + Settings.OctaveOffsets[i].x) * frequency;
-            var sampleY = (y + Settings.Offset.y + Settings.OctaveOffsets[i].y) * frequency;
+            var sampleX = (x + Settings.Offset.x + Settings.OctaveOffsets[i].x) * frequency / Settings.Smoothness;
+            var sampleY = (y + Settings.Offset.y + Settings.OctaveOffsets[i].y) * frequency / Settings.Smoothness;
 
             var simplexValue = noise.snoise(new float2(sampleX, sampleY));
-            noiseHeight += simplexValue * amplitude / Settings.Smoothness;
+            noiseHeight += simplexValue * amplitude;
 
             amplitude *= Settings.Persistence;
             frequency *= Settings.Roughness;

@@ -7,5 +7,5 @@ public interface IHeightmapSettings
     public float GetPersistence();
     public float GetRoughness();
     public float GetSmoothness();
-    public float GetWorleyPower();
+    public float GetContinentStartImpact();
 }

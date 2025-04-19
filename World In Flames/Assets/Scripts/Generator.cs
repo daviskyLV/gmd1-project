@@ -270,9 +270,17 @@ public static class Generator
         };
         var heightmapHandle = heightNoiseJob.Schedule(computedHeightmap.Length, 64);
 
-        // Generating worley noise continents and making sure simplex noise finishes
-        var worleyContinents = GenerateWorleyNoise(totWidth, totHeight, worldConf.GetSeed(), heightConf.GetOffset(), heightConf.GetRoughness(),
-            worldConf.GetDesiredContinents(), true, EasingFunction.EaseInOutCubic, true, heightConf.GetWorleyPower());
+        var continentJob = new ContinentGenJob
+        {
+            ContinentSize = worldConf.GetContinentSize(),
+            MapWidth = totWidth,
+            Seed = worldConf.GetSeed(),
+            StartImpact = heightConf.GetContinentStartImpact(), // around 5th term the impact will be 80%
+            WaterChance = 0.5f,
+            GeneratedMap = new(computedHeightmap.Length, Allocator.TempJob)
+        };
+        continentJob.Schedule(computedHeightmap.Length, 64).Complete();
+        var generatedContinents = continentJob.GeneratedMap.ToArray();
         heightmapHandle.Complete();
 
         // small cleanup
@@ -282,19 +290,20 @@ public static class Generator
         var combinerJob = new CombinatorJob
         {
             InputA = new(computedHeightmap, Allocator.TempJob),
-            InputB = new(worleyContinents, Allocator.TempJob),
+            InputB = continentJob.GeneratedMap,
             CombinationTechnique = ValueMultiplier.Multiplicative,
             Output = computedHeightmap // doing in place
         };
         var combinerHandle = combinerJob.Schedule(computedHeightmap.Length, 64);
         combinerHandle.Complete();
         combinerJob.InputA.Dispose(); // duplicate
-        combinerJob.InputB.Dispose(); // worley combined, disposing
+        combinerJob.InputB.Dispose(); // continent combined, disposing
 
         // Scaling back to 0-1
         Utilities.GetMinMaxValues(computedHeightmap.ToArray(), out float minCombined, out float maxCombined);
-        var rescaleJob = new NormalizerJob {
-            MinValue = minCombined,
+        var rescaleJob = new NormalizerJob
+        {
+            MinValue = 0.001f,//minCombined,
             MaxValue = maxCombined,
             Datapoints = computedHeightmap,
             EasingFunction = EasingFunction.Linear,

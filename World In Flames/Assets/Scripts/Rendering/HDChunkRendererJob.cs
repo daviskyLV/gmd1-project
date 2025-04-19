@@ -106,8 +106,14 @@ public struct HDChunkRendererJob : IJobParallelFor
         return coordinate.y * rsize + coordinate.x;
     }
 
+    private readonly float GetHeightAt(int hmapIndex)
+    {
+        return math.max(SeaLevel, Heightmap[hmapIndex]);
+    }
+
     private readonly float3 HmapCoord(int index)
     {
-        return new(index % HeightmapSize, Heightmap[index], index / HeightmapSize);
+        var coord = new int2(index % HeightmapSize, index / HeightmapSize);
+        return new(coord.x, GetHeightAt(index), coord.y);
     }
 }

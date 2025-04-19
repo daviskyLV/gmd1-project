@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: HeightmapSettings
   m_EditorClassIdentifier: 
   offset: {x: 0, y: 0}
-  octaves: 3
-  persistence: 0.5
-  roughness: 1
-  smoothness: 1
-  worleyPower: 4
+  octaves: 7
+  persistence: 0.584
+  roughness: 1.94
+  smoothness: 56.2
+  continentStartImpact: 0.096
