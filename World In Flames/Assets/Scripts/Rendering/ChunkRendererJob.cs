@@ -3,7 +3,6 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
-using UnityEngine;
 
 /// <summary>
 /// Used to compute a mesh's vertices, triangles, UVs and normals. Job size should be Vertices length. Mesh is assumed to be a square.

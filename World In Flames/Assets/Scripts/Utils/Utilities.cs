@@ -30,7 +30,6 @@ public static class Utilities
     {
         var sideAB = pointB - pointA;
         var sideAC = pointC - pointA;
-        //return math.normalize(math.cross(sideAB, sideAC));
         var a = math.normalize(math.cross(sideAC, sideAB));
         return a;
     }
@@ -75,14 +74,14 @@ public static class Utilities
     {
         var newCoord = startCoord + direction;
         if (newCoord.x < 0)
-            newCoord.x = worldWidth - newCoord.x % worldWidth;
+            newCoord.x = worldWidth + newCoord.x % worldWidth;
         else
-            newCoord.x = newCoord.x % worldWidth;
+            newCoord.x %= worldWidth;
 
         if (newCoord.y < 0)
-            newCoord.y = worldHeight - newCoord.y % worldHeight;
+            newCoord.y = worldHeight + newCoord.y % worldHeight;
         else
-            newCoord.y = newCoord.y % worldHeight;
+            newCoord.y %= worldHeight;
 
         return newCoord;
     }
@@ -158,17 +157,14 @@ public static class Utilities
     /// <param name="max">The computed maximum value</param>
     private static void FinalMinMaxCalculation(float[] input, out float min, out float max)
     {
-        var minVal = float.MaxValue;
-        var maxVal = float.MinValue;
+        min = float.MaxValue;
+        max = float.MinValue;
 
-        for (int i = 0; i < input.Length; i++)
+        foreach (var val in input)
         {
-            minVal = Mathf.Min(minVal, input[i]);
-            maxVal = Mathf.Max(maxVal, input[i]);
+            min = Mathf.Min(min, val);
+            max = Mathf.Max(max, val);
         }
-
-        min = minVal;
-        max = maxVal;
     }
 
     /// <summary>

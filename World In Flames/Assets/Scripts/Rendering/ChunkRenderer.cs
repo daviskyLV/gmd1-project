@@ -169,7 +169,6 @@ public class ChunkRenderer : MonoBehaviour
             normals = meshNormals,
             triangles = meshTriangles,
         };
-        //mesh.RecalculateNormals();
         meshFilter.mesh = mesh;
         meshCollider.sharedMesh = mesh;
     }

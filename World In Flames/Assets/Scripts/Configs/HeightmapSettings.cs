@@ -15,9 +15,15 @@ public class HeightmapSettings : ScriptableObject, IHeightmapSettings
     [SerializeField]
     [Tooltip("How chaotic does the map get, higher values mean more rough")]
     private float roughness = 1f;
+    [SerializeField]
+    private float smoothness = 4.20f;
+    [SerializeField]
+    private float worleyPower = 1f;
 
     public Vector2 GetOffset() {  return offset; }
     public int GetOctaves() { return octaves; }
     public float GetPersistence() { return persistence; }
     public float GetRoughness() { return roughness; }
+    public float GetSmoothness() { return smoothness; }
+    public float GetWorleyPower() { return worleyPower; }
 }

@@ -16,3 +16,5 @@ MonoBehaviour:
   octaves: 3
   persistence: 0.5
   roughness: 1
+  smoothness: 1
+  worleyPower: 4

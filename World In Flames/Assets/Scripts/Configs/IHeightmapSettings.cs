@@ -6,4 +6,6 @@ public interface IHeightmapSettings
     public int GetOctaves();
     public float GetPersistence();
     public float GetRoughness();
+    public float GetSmoothness();
+    public float GetWorleyPower();
 }

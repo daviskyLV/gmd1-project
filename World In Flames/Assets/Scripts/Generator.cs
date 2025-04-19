@@ -150,7 +150,7 @@ public static class Generator
     /// <param name="inverted">Whether it should be inverted, only applies if normalization is true</param>
     /// <returns>Generated float array with row major order of values</returns>
     public static float[] GenerateWorleyNoise(
-        int width, int height, uint seed, Vector2 offset, float roughness, int points, bool normalized = true, EasingFunction normalizationEasing = EasingFunction.Linear, bool inverted = false
+        int width, int height, uint seed, Vector2 offset, float roughness, int points, bool normalized = true, EasingFunction normalizationEasing = EasingFunction.Linear, bool inverted = false, float power = 1f
     ) {
         if (points < 1)
             points = 1;
@@ -189,6 +189,28 @@ public static class Generator
             };
             var normalHandle = normalJob.Schedule(width * height, 64);
             normalHandle.Complete();
+
+            var powerJob = new PowerJob
+            {
+                Input = new(outputNative, Allocator.TempJob),
+                Power = power,
+                Output = outputNative
+            };
+            powerJob.Schedule(outputNative.Length, 64).Complete();
+            powerJob.Input.Dispose();
+
+            // Normalizing values in range 0-1
+            Utilities.GetMinMaxValues(outputNative.ToArray(), out float minPower, out float maxPower);
+            var normalJobPower = new NormalizerJob
+            {
+                MinValue = minPower,
+                MaxValue = maxPower,
+                Datapoints = outputNative,
+                EasingFunction = EasingFunction.Linear,
+                Invert = false
+            };
+            var normalPowerHandle = normalJobPower.Schedule(width * height, 64);
+            normalPowerHandle.Complete();
         }
 
         // Extracting generated map and cleaning up arrays
@@ -237,6 +259,7 @@ public static class Generator
             Octaves = heightConf.GetOctaves(),
             Persistence = heightConf.GetPersistence(),
             Roughness = heightConf.GetRoughness(),
+            Smoothness = heightConf.GetSmoothness(),
             OctaveOffsets = octaveOffsets
         };
         var computedHeightmap = new NativeArray<float>(totWidth * totHeight, Allocator.TempJob);
@@ -248,7 +271,8 @@ public static class Generator
         var heightmapHandle = heightNoiseJob.Schedule(computedHeightmap.Length, 64);
 
         // Generating worley noise continents and making sure simplex noise finishes
-        var worleyContinents = GenerateWorleyNoise(totWidth, totHeight, worldConf.GetSeed(), heightConf.GetOffset(), heightConf.GetRoughness(), worldConf.GetDesiredContinents(), true, EasingFunction.EaseInOutCubic);
+        var worleyContinents = GenerateWorleyNoise(totWidth, totHeight, worldConf.GetSeed(), heightConf.GetOffset(), heightConf.GetRoughness(),
+            worldConf.GetDesiredContinents(), true, EasingFunction.EaseInOutCubic, true, heightConf.GetWorleyPower());
         heightmapHandle.Complete();
 
         // small cleanup
@@ -295,7 +319,8 @@ public static class Generator
                 var rowI = row * totWidth; // row's starting index in the heightmap array
                 for (int x = 0; x < resolution; x++)
                 {
-                    tot = heightmap[rowI + provPos.x * resolution + x];
+                    var hmapI = rowI + provPos.x * resolution + x;
+                    tot += heightmap[hmapI];
                 }
             }
             provHeights[i] = tot / (resolution * resolution);

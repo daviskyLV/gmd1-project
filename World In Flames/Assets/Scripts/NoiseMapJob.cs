@@ -36,6 +36,8 @@ public struct SimplexNoiseJobSettings
     /// </summary>
     [ReadOnly]
     public float Roughness;
+    [ReadOnly]
+    public float Smoothness;
     /// <summary>
     /// Precomputed octave offsets.
     /// </summary>
@@ -71,7 +73,7 @@ public struct SimplexMapJob : IJobParallelFor
             var sampleY = (y + Settings.Offset.y + Settings.OctaveOffsets[i].y) * frequency;
 
             var simplexValue = noise.snoise(new float2(sampleX, sampleY));
-            noiseHeight += simplexValue * amplitude;
+            noiseHeight += simplexValue * amplitude / Settings.Smoothness;
 
             amplitude *= Settings.Persistence;
             frequency *= Settings.Roughness;
