@@ -1,7 +1,7 @@
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "WorldSettings", menuName = "MapGen/World Settings")]
-public class WorldSettings : ScriptableObject
+public class WorldSettings : ScriptableObject, IWorldSettings
 {
     [SerializeField]
     [Min(1)]

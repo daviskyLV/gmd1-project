@@ -1,7 +1,7 @@
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "TemperatureSettings", menuName = "MapGen/Temperature Settings")]
-public class TemperatureSettings : ScriptableObject
+public class TemperatureSettings : ScriptableObject, ITemperatureSettings
 {
     [SerializeField]
     [Tooltip("How the temperature is spread out along Y axis, top to bottom. 0 = lowest temp, 1 = max")]

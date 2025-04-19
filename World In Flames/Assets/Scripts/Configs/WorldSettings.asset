@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: WorldSettings
   m_EditorClassIdentifier: 
   seed: 1337
-  desiredContinents: 3
-  mapWidth: 17
-  mapHeight: 17
+  desiredContinents: 4
+  mapWidth: 245
+  mapHeight: 245
   mapResolution: 1
   seaLevel: 0.1

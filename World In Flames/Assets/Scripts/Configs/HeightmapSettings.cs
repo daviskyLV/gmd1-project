@@ -1,7 +1,7 @@
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "HeightmapSettings", menuName = "MapGen/Heightmap Settings")]
-public class HeightmapSettings : ScriptableObject
+public class HeightmapSettings : ScriptableObject, IHeightmapSettings
 {
     [SerializeField]
     private Vector2 offset = new();

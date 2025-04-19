@@ -32,11 +32,6 @@ public struct HDChunkRendererJob : IJobParallelFor
     [WriteOnly]
     public NativeArray<float3> Vertices;
     /// <summary>
-    /// UV map for mesh, same length as Vertices
-    /// </summary>
-    [WriteOnly]
-    public NativeArray<float2> UVs;
-    /// <summary>
     /// Mesh normals, same length as Vertices
     /// </summary>
     [WriteOnly]
@@ -54,8 +49,7 @@ public struct HDChunkRendererJob : IJobParallelFor
         var innerI = new int2(index % rsize, index / rsize);
         var hmapIndex = (innerI.y + 1) * HeightmapSize + innerI.x + 1;
 
-        /// UV MAP & VERTICES ///
-        UVs[index] = new(innerI.x / (float)rsize, innerI.y / (float)rsize);
+        /// VERTICES ///
         Vertices[index] = new(innerI.x, math.max(SeaLevel, Heightmap[hmapIndex]), innerI.y);
 
         /// QUADS ///
@@ -64,13 +58,13 @@ public struct HDChunkRendererJob : IJobParallelFor
             Quads[index] = new MeshQuad
             {
                 TriOne = new(
-                        index,
                         CalculateVertexIndex(innerI + new int2(1, 1)),
+                        index,
                         CalculateVertexIndex(innerI + new int2(0, 1))
                     ),
                 TriTwo = new(
-                        index,
                         CalculateVertexIndex(innerI + new int2(1, 0)),
+                        index,
                         CalculateVertexIndex(innerI + new int2(1, 1))
                     ),
                 Valid = true
@@ -87,13 +81,13 @@ public struct HDChunkRendererJob : IJobParallelFor
 
         /// CALCULATING NORMALS ///
         // hmap indices with movement of 1
-        var x0y0 = Heightmap[hmapIndex]; // no movement
-        var xm1ym1 = Heightmap[hmapIndex - HeightmapSize - 1]; // x-1;y-1
-        var ym1 = Heightmap[hmapIndex - HeightmapSize]; // y-1
-        var xm1 = Heightmap[hmapIndex - 1]; // x-1
-        var xp1 = Heightmap[hmapIndex + 1]; // x+1
-        var yp1 = Heightmap[hmapIndex + HeightmapSize]; // y+1
-        var xp1yp1 = Heightmap[hmapIndex + HeightmapSize + 1]; // x+1;y+1
+        var x0y0 = HmapCoord(hmapIndex); // no movement
+        var xm1ym1 = HmapCoord(hmapIndex - HeightmapSize - 1); // x-1;y-1
+        var ym1 = HmapCoord(hmapIndex - HeightmapSize); // y-1
+        var xm1 = HmapCoord(hmapIndex - 1); // x-1
+        var xp1 = HmapCoord(hmapIndex + 1); // x+1
+        var yp1 = HmapCoord(hmapIndex + HeightmapSize); // y+1
+        var xp1yp1 = HmapCoord(hmapIndex + HeightmapSize + 1); // x+1;y+1
         // normals that often repeat for use cases
         var Anorm = Utilities.CalculateNormal(xm1ym1, x0y0, xm1);
         var Bnorm = Utilities.CalculateNormal(xm1ym1, ym1, x0y0);
@@ -110,5 +104,10 @@ public struct HDChunkRendererJob : IJobParallelFor
     {
         var rsize = HeightmapSize - 2;
         return coordinate.y * rsize + coordinate.x;
+    }
+
+    private readonly float3 HmapCoord(int index)
+    {
+        return new(index % HeightmapSize, Heightmap[index], index / HeightmapSize);
     }
 }

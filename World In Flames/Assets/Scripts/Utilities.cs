@@ -30,8 +30,9 @@ public static class Utilities
     {
         var sideAB = pointB - pointA;
         var sideAC = pointC - pointA;
-        var normalDotProd = math.normalize(math.cross(sideAB, sideAC));
-        return normalDotProd;
+        //return math.normalize(math.cross(sideAB, sideAC));
+        var a = math.normalize(math.cross(sideAC, sideAB));
+        return a;
     }
 
     [BurstCompile]
@@ -143,6 +144,7 @@ public static class Utilities
                 return;
             }
         }
+        inputData.Dispose();
 
         // huh?
         FinalMinMaxCalculation(input, out min, out max);

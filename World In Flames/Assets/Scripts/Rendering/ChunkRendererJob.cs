@@ -3,12 +3,15 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
+using UnityEngine;
 
 /// <summary>
 /// Used to compute a mesh's vertices, triangles, UVs and normals. Job size should be Vertices length. Mesh is assumed to be a square.
 /// Works based on this principle: https://youtu.be/c2BUgXdjZkg?si=CJVV-fBdKOXxSmDF&t=164
 /// </summary>
+#if !UNITY_EDITOR
 [BurstCompile]
+#endif
 public struct ChunkRendererJob : IJobParallelFor
 {
     /// <summary>
@@ -43,11 +46,6 @@ public struct ChunkRendererJob : IJobParallelFor
     [WriteOnly]
     public NativeArray<float3> Vertices;
     /// <summary>
-    /// UV map for mesh, same length as Vertices
-    /// </summary>
-    [WriteOnly]
-    public NativeArray<float2> UVs;
-    /// <summary>
     /// Mesh normals, same length as Vertices
     /// </summary>
     [WriteOnly]
@@ -62,52 +60,57 @@ public struct ChunkRendererJob : IJobParallelFor
     {
         // index = Vertices index!!!!!!!!!
         // coordinates within vertice array assuming ALL vertices will be used (except out of mesh)
-        int2 innerI = CalculateComplexInnerIndex(index);
+        var inI = CalculateComplexInnerIndex(index);
         var rsize = VxRowSize[0];
-        var hmapIndex = (innerI.y + 1) * HeightmapSize + innerI.x + 1;
-        var vertType = CalculateVerticeType(innerI);
+        var hmapIndex = (inI.y + 1) * HeightmapSize + inI.x + 1;
+        var vertType = CalculateVerticeType(inI);
 
         /// VERTICE COORDINATES ///
-        Vertices[index] = math.select(
-            math.select(
-                // edge connection, interpolating height
-                // vertical
-                new float3(innerI.x,
-                    math.max(SeaLevel, (innerI.y % DetailIncrement) / (float)DetailIncrement),
-                    innerI.y),
+        if ((vertType & VerticeType.EdgeConnection) != 0 && (vertType & VerticeType.Main) == 0)
+        {
+            // edge connection BUT not a main vertice
+            if (inI.y == 1 || inI.y == rsize - 2)
+            {
                 // horizontal
-                new float3(innerI.x,
-                    math.max(SeaLevel, (innerI.x % DetailIncrement) / (float)DetailIncrement),
-                    innerI.y),
-                innerI.y == 1 || innerI.y == rsize-2
-            ),
+                var xprog = (inI.x-1) % DetailIncrement / (float)DetailIncrement;
+                var x1 = new int2((inI.x - 1) / DetailIncrement * DetailIncrement + 1, inI.y);
+                var x2 = x1 + new int2(DetailIncrement, 0);
+                var lerped = math.lerp(GetHeightAt(x1), GetHeightAt(x2), xprog);
+                Vertices[index] = new(inI.x, lerped, inI.y);
+            } else
+            {
+                // vertical
+                var yprog = (inI.y-1) % DetailIncrement / (float)DetailIncrement;
+                var y1 = new int2(inI.x, (inI.y - 1) / DetailIncrement * DetailIncrement + 1);
+                var y2 = y1 + new int2(0, DetailIncrement);
+                var lerped = math.lerp(GetHeightAt(y1), GetHeightAt(y2), yprog);
+                Vertices[index] = new(inI.x, lerped, inI.y);
+            }
+        } else
+        {
             // not edge connection, using normal height
-            new float3(innerI.x, math.max(SeaLevel, Heightmap[hmapIndex]), innerI.y),
-            // edge connection BUT not a main vertice (inverted)
-            !((vertType & VerticeType.EdgeConnection) != 0 && (vertType & VerticeType.Main) == 0)
-        );
-        /// UV MAP ///
-        UVs[index] = new(innerI.x / (float)rsize, innerI.y / (float)rsize);
+            Vertices[index] = new(inI.x, math.max(SeaLevel, Heightmap[hmapIndex]), inI.y);
+        }
 
         /// CALCULATING QUADS ///
-        if (math.all(innerI < rsize - 1))
+        if (math.all(inI < rsize - 1))
         {
             // not on the right side/bottom vertices
-            if (math.any(innerI == 0) || math.any(innerI == rsize - 2))
+            if (math.any(inI == 0) || math.any(inI == rsize - 2))
             {
                 // top or second to last row, or 1st column or second to last column
                 // these points form highest quality quads
                 Quads[index] = new MeshQuad
                 {
                     TriOne = new(
+                        CalculateVertexIndex(inI + new int2(1, 1)),
                         index,
-                        CalculateVertexIndex(innerI + new int2(1, 1)),
-                        CalculateVertexIndex(innerI + new int2(0, 1))
+                        CalculateVertexIndex(inI + new int2(0, 1))
                     ),
                     TriTwo = new(
+                        CalculateVertexIndex(inI + new int2(1, 0)),
                         index,
-                        CalculateVertexIndex(innerI + new int2(1, 0)),
-                        CalculateVertexIndex(innerI + new int2(1, 1))
+                        CalculateVertexIndex(inI + new int2(1, 1))
                     ),
                     Valid = true
                 };
@@ -118,14 +121,14 @@ public struct ChunkRendererJob : IJobParallelFor
                 Quads[index] = new MeshQuad
                 {
                     TriOne = new(
+                        CalculateVertexIndex(inI + new int2(DetailIncrement, DetailIncrement)),
                         index,
-                        CalculateVertexIndex(innerI + new int2(DetailIncrement, DetailIncrement)),
-                        CalculateVertexIndex(innerI + new int2(0, DetailIncrement))
+                        CalculateVertexIndex(inI + new int2(0, DetailIncrement))
                     ),
                     TriTwo = new(
+                        CalculateVertexIndex(inI + new int2(DetailIncrement, 0)),
                         index,
-                        CalculateVertexIndex(innerI + new int2(DetailIncrement, 0)),
-                        CalculateVertexIndex(innerI + new int2(DetailIncrement, DetailIncrement))
+                        CalculateVertexIndex(inI + new int2(DetailIncrement, DetailIncrement))
                     ),
                     Valid = true
                 };
@@ -143,13 +146,13 @@ public struct ChunkRendererJob : IJobParallelFor
 
         /// CALCULATING NORMALS (fml) ///
         // hmap indices with movement of 1
-        var x0y0 = Heightmap[hmapIndex]; // no movement
-        var xm1ym1 = Heightmap[hmapIndex - HeightmapSize - 1]; // x-1;y-1
-        var ym1 = Heightmap[hmapIndex - HeightmapSize]; // y-1
-        var xm1 = Heightmap[hmapIndex - 1]; // x-1
-        var xp1 = Heightmap[hmapIndex + 1]; // x+1
-        var yp1 = Heightmap[hmapIndex + HeightmapSize]; // y+1
-        var xp1yp1 = Heightmap[hmapIndex + HeightmapSize + 1]; // x+1;y+1
+        var x0y0 = HmapCoord(hmapIndex); // no movement
+        var xm1ym1 = HmapCoord(hmapIndex - HeightmapSize - 1); // x-1;y-1
+        var ym1 = HmapCoord(hmapIndex - HeightmapSize); // y-1
+        var xm1 = HmapCoord(hmapIndex - 1); // x-1
+        var xp1 = HmapCoord(hmapIndex + 1); // x+1
+        var yp1 = HmapCoord(hmapIndex + HeightmapSize); // y+1
+        var xp1yp1 = HmapCoord(hmapIndex + HeightmapSize + 1); // x+1;y+1
         // normals that often repeat for use cases
         var Anorm = Utilities.CalculateNormal(xm1ym1, x0y0, xm1);
         var Bnorm = Utilities.CalculateNormal(xm1ym1, ym1, x0y0);
@@ -166,15 +169,15 @@ public struct ChunkRendererJob : IJobParallelFor
         }
         else if ((vertType & VerticeType.Main) != 0)
         {
-            if (math.all(innerI > 1) && math.all(innerI < rsize - 2))
+            if (math.all(inI > 1) && math.all(inI < rsize - 2))
             {
                 // middle points (same as edge, except with detail increment)
-                var xmDymD = Heightmap[hmapIndex - DetailIncrement * (HeightmapSize + 1)]; // x-Detail; y-Detail
-                var xmD = Heightmap[hmapIndex - DetailIncrement]; // x-Detail
-                var ymD = Heightmap[hmapIndex - DetailIncrement * HeightmapSize]; // y-Detail
-                var xpD = Heightmap[hmapIndex + DetailIncrement]; // x+Detail
-                var ypD = Heightmap[hmapIndex + DetailIncrement * HeightmapSize]; // y+Detail
-                var xpDypD = Heightmap[hmapIndex + DetailIncrement * (HeightmapSize + 1)]; // x+Detail; y+Detail
+                var xmDymD = HmapCoord(hmapIndex - DetailIncrement * (HeightmapSize + 1)); // x-Detail; y-Detail
+                var xmD = HmapCoord(hmapIndex - DetailIncrement); // x-Detail
+                var ymD = HmapCoord(hmapIndex - DetailIncrement * HeightmapSize); // y-Detail
+                var xpD = HmapCoord(hmapIndex + DetailIncrement); // x+Detail
+                var ypD = HmapCoord(hmapIndex + DetailIncrement * HeightmapSize); // y+Detail
+                var xpDypD = HmapCoord(hmapIndex + DetailIncrement * (HeightmapSize + 1)); // x+Detail; y+Detail
 
                 Anorm = Utilities.CalculateNormal(xmDymD, x0y0, xmD);
                 Bnorm = Utilities.CalculateNormal(xmDymD, ymD, x0y0);
@@ -184,84 +187,84 @@ public struct ChunkRendererJob : IJobParallelFor
                 Fnorm = Utilities.CalculateNormal(ymD, xpD, x0y0);
                 normSum = Anorm + Bnorm + Cnorm + Dnorm + Enorm + Fnorm;
             }
-            else if (math.all(innerI == new int2(1, 1)))
+            else if (math.all(inI == new int2(1, 1)))
             {
                 // top left corner
-                var xpD = Heightmap[hmapIndex + DetailIncrement]; // x+Detail
-                var ypD = Heightmap[hmapIndex + DetailIncrement * HeightmapSize]; // y+Detail
-                var xpDypD = Heightmap[hmapIndex + DetailIncrement * (HeightmapSize + 1)]; // x+Detail; y+Detail
+                var xpD = HmapCoord(hmapIndex + DetailIncrement); // x+Detail
+                var ypD = HmapCoord(hmapIndex + DetailIncrement * HeightmapSize); // y+Detail
+                var xpDypD = HmapCoord(hmapIndex + DetailIncrement * (HeightmapSize + 1)); // x+Detail; y+Detail
                 var Dbot = Utilities.CalculateNormal(x0y0, xpDypD, ypD);
                 var Dtop = Utilities.CalculateNormal(x0y0, xpD, xpDypD);
                 normSum = Anorm + Bnorm + Cnorm + Fnorm + Dbot + Dtop;
             }
-            else if (math.all(innerI == new int2(rsize - 2, 1)))
+            else if (math.all(inI == new int2(rsize - 2, 1)))
             {
                 // top right corner
-                var xmD = Heightmap[hmapIndex - DetailIncrement]; // x-Detail
-                var ypD = Heightmap[hmapIndex + DetailIncrement * HeightmapSize]; // y + Detail
+                var xmD = HmapCoord(hmapIndex - DetailIncrement); // x-Detail
+                var ypD = HmapCoord(hmapIndex + DetailIncrement * HeightmapSize); // y + Detail
                 var big = Utilities.CalculateNormal(xmD, x0y0, ypD);
                 normSum = big + Anorm + Bnorm + Fnorm + Dnorm + Enorm;
             }
-            else if (math.all(innerI == new int2(1, rsize - 2)))
+            else if (math.all(inI == new int2(1, rsize - 2)))
             {
                 // bottom left corner
-                var ymD = Heightmap[hmapIndex - DetailIncrement * HeightmapSize]; // y - Detail
-                var xpD = Heightmap[hmapIndex + DetailIncrement]; // x + Detail
+                var ymD = HmapCoord(hmapIndex - DetailIncrement * HeightmapSize); // y - Detail
+                var xpD = HmapCoord(hmapIndex + DetailIncrement); // x + Detail
                 var big = Utilities.CalculateNormal(ymD, xpD, x0y0);
                 normSum = big + Anorm + Bnorm + Cnorm + Dnorm + Enorm;
             }
-            else if (math.all(innerI == new int2(rsize - 2, rsize - 2)))
+            else if (math.all(inI == new int2(rsize - 2, rsize - 2)))
             {
                 // bottom right corner
-                var xmD = Heightmap[hmapIndex - DetailIncrement]; // x-Detail
-                var ymD = Heightmap[hmapIndex - DetailIncrement * HeightmapSize]; // y-Detail
-                var xmDymD = Heightmap[hmapIndex - DetailIncrement * (HeightmapSize + 1)]; // x-Detail; y-Detail
+                var xmD = HmapCoord(hmapIndex - DetailIncrement); // x-Detail
+                var ymD = HmapCoord(hmapIndex - DetailIncrement * HeightmapSize); // y-Detail
+                var xmDymD = HmapCoord(hmapIndex - DetailIncrement * (HeightmapSize + 1)); // x-Detail; y-Detail
                 var Dbot = Utilities.CalculateNormal(xmDymD, x0y0, xmD);
                 var Dtop = Utilities.CalculateNormal(xmDymD, ymD, x0y0);
                 normSum = Dbot + Dtop + Fnorm + Cnorm + Dnorm + Enorm;
             }
-            else if (innerI.x == 1)
+            else if (inI.x == 1)
             {
                 // left side, corners already covered so not checking for them in if
-                var ymD = Heightmap[hmapIndex - DetailIncrement * HeightmapSize]; // y-Detail
-                var xpD = Heightmap[hmapIndex + DetailIncrement]; // x+Detail
-                var ypD = Heightmap[hmapIndex + DetailIncrement * HeightmapSize]; // y+Detail
-                var xpDypD = Heightmap[hmapIndex + DetailIncrement * (HeightmapSize + 1)]; // x+Detail; y+Detail
+                var ymD = HmapCoord(hmapIndex - DetailIncrement * HeightmapSize); // y-Detail
+                var xpD = HmapCoord(hmapIndex + DetailIncrement); // x+Detail
+                var ypD = HmapCoord(hmapIndex + DetailIncrement * HeightmapSize); // y+Detail
+                var xpDypD = HmapCoord(hmapIndex + DetailIncrement * (HeightmapSize + 1)); // x+Detail; y+Detail
                 var top = Utilities.CalculateNormal(ymD, xpD, x0y0);
                 var mid = Utilities.CalculateNormal(x0y0, xpD, xpDypD);
                 var bot = Utilities.CalculateNormal(x0y0, xpDypD, ypD);
                 normSum = top + mid + bot + Anorm + Bnorm + Cnorm;
             }
-            else if (innerI.x == rsize - 2) {
+            else if (inI.x == rsize - 2) {
                 // right side
-                var xmDymD = Heightmap[hmapIndex - DetailIncrement * (HeightmapSize + 1)]; // x-Detail; y-Detail
-                var xmD = Heightmap[hmapIndex - DetailIncrement]; // x-Detail
-                var ymD = Heightmap[hmapIndex - DetailIncrement * HeightmapSize]; // y-Detail
-                var ypD = Heightmap[hmapIndex + DetailIncrement * HeightmapSize]; // y+Detail
+                var xmDymD = HmapCoord(hmapIndex - DetailIncrement * (HeightmapSize + 1)); // x-Detail; y-Detail
+                var xmD = HmapCoord(hmapIndex - DetailIncrement); // x-Detail
+                var ymD = HmapCoord(hmapIndex - DetailIncrement * HeightmapSize); // y-Detail
+                var ypD = HmapCoord(hmapIndex + DetailIncrement * HeightmapSize); // y+Detail
                 var top = Utilities.CalculateNormal(xmDymD, ymD, x0y0);
                 var mid = Utilities.CalculateNormal(xmDymD, x0y0, xmD);
                 var bot = Utilities.CalculateNormal(xmD, x0y0, ymD);
                 normSum = top + mid + bot + Fnorm + Dnorm + Enorm;
             }
-            else if (innerI.y == 1)
+            else if (inI.y == 1)
             {
                 // top row
-                var xmD = Heightmap[hmapIndex - DetailIncrement]; // x-Detail
-                var xpD = Heightmap[hmapIndex + DetailIncrement]; // x+Detail
-                var ypD = Heightmap[hmapIndex + DetailIncrement * HeightmapSize]; // y+Detail
-                var xpDypD = Heightmap[hmapIndex + DetailIncrement * (HeightmapSize + 1)]; // x+Detail; y+Detail
+                var xmD = HmapCoord(hmapIndex - DetailIncrement); // x-Detail
+                var xpD = HmapCoord(hmapIndex + DetailIncrement); // x+Detail
+                var ypD = HmapCoord(hmapIndex + DetailIncrement * HeightmapSize); // y+Detail
+                var xpDypD = HmapCoord(hmapIndex + DetailIncrement * (HeightmapSize + 1)); // x+Detail; y+Detail
                 var left = Utilities.CalculateNormal(xmD, x0y0, ypD);
                 var mid = Utilities.CalculateNormal(x0y0, xpDypD, ypD);
                 var right = Utilities.CalculateNormal(x0y0, xpD, xpDypD);
                 normSum = left + mid + right + Anorm + Bnorm + Fnorm;
             }
-            else if (innerI.y == rsize - 2)
+            else if (inI.y == rsize - 2)
             {
                 // bottom row
-                var xmDymD = Heightmap[hmapIndex - DetailIncrement * (HeightmapSize + 1)]; // x-Detail; y-Detail
-                var xmD = Heightmap[hmapIndex - DetailIncrement]; // x-Detail
-                var ymD = Heightmap[hmapIndex - DetailIncrement * HeightmapSize]; // y-Detail
-                var xpD = Heightmap[hmapIndex + DetailIncrement]; // x+Detail
+                var xmDymD = HmapCoord(hmapIndex - DetailIncrement * (HeightmapSize + 1)); // x-Detail; y-Detail
+                var xmD = HmapCoord(hmapIndex - DetailIncrement); // x-Detail
+                var ymD = HmapCoord(hmapIndex - DetailIncrement * HeightmapSize); // y-Detail
+                var xpD = HmapCoord(hmapIndex + DetailIncrement); // x+Detail
                 var left = Utilities.CalculateNormal(xmDymD, x0y0, xmD);
                 var mid = Utilities.CalculateNormal(xmDymD, ymD, x0y0);
                 var right = Utilities.CalculateNormal(ymD, xpD, x0y0);
@@ -269,13 +272,13 @@ public struct ChunkRendererJob : IJobParallelFor
             }
         } else if ((vertType & VerticeType.EdgeConnection) != 0) {
             // left side
-            normSum = math.select(normSum, Anorm + Bnorm + Cnorm, innerI.x == 1);
+            normSum = math.select(normSum, Anorm + Bnorm + Cnorm, inI.x == 1);
             // right side
-            normSum = math.select(normSum, Fnorm + Dnorm + Enorm, innerI.x == rsize - 2);
+            normSum = math.select(normSum, Fnorm + Dnorm + Enorm, inI.x == rsize - 2);
             // top row
-            normSum = math.select(normSum, Anorm + Bnorm + Fnorm, innerI.y == 1);
+            normSum = math.select(normSum, Anorm + Bnorm + Fnorm, inI.y == 1);
             // bottom row
-            normSum = math.select(normSum, Cnorm + Dnorm + Enorm, innerI.y == rsize - 2);
+            normSum = math.select(normSum, Cnorm + Dnorm + Enorm, inI.y == rsize - 2);
         }
         Normals[index] = math.normalize(normSum);
     }
@@ -290,6 +293,17 @@ public struct ChunkRendererJob : IJobParallelFor
         Main = 8
     }
 
+    private readonly float3 HmapCoord(int index)
+    {
+        return new(index % HeightmapSize, Heightmap[index], index / HeightmapSize);
+    }
+
+    private readonly float GetHeightAt(int2 coord)
+    {
+        var hmapIndex = (coord.y + 1) * HeightmapSize + coord.x + 1;
+        return math.max(SeaLevel, Heightmap[hmapIndex]);
+    } 
+
     private readonly VerticeType CalculateVerticeType(int2 innerI) {
         var rsize = VxRowSize[0];
         var vertType = VerticeType.Unset;
@@ -297,18 +311,20 @@ public struct ChunkRendererJob : IJobParallelFor
             // checking if vertice is edge
             (int)vertType,
             (int)VerticeType.Edge,
-            innerI.x == 0 || innerI.x == rsize - 1 || innerI.y == 0 || innerI.y == rsize - 1
+            math.any(innerI == 0) || math.any(innerI == rsize-1)
         );
         vertType |= (VerticeType)math.select(
             // checking if vertice is edge connection
             (int)vertType,
             (int)VerticeType.EdgeConnection,
-            (innerI.x == 1 || innerI.x == rsize - 2) && (innerI.y == 1 || innerI.y == rsize - 2)
+            (vertType & VerticeType.Edge) == 0 &&
+            (innerI.x == 1 || innerI.x == rsize - 2 || innerI.y == 1 || innerI.y == rsize - 2)
         );
         vertType |= (VerticeType)math.select(
             (int)vertType,
             (int)VerticeType.Main,
-            (vertType & VerticeType.Edge) == 0 && ((innerI.x - 1) % DetailIncrement == 0 || (innerI.y - 1) % DetailIncrement == 0)
+            (vertType & VerticeType.Edge) == 0 &&
+            ((innerI.x - 1) % DetailIncrement == 0 && (innerI.y - 1) % DetailIncrement == 0)
         );
         vertType |= (VerticeType)math.select(
             (int)vertType,
@@ -354,8 +370,8 @@ public struct ChunkRendererJob : IJobParallelFor
                 // calculate innerI if bottom 2 rows, otherwise leave unchanged
                 innerI,
                 new(
-                    (index - rsize * 2) % rsize,
-                    (index - rsize * 2) / rsize + rsize - 2
+                    (index - (Vertices.Length - rsize * 2)) % rsize,
+                    (index - (Vertices.Length - rsize * 2)) / rsize + rsize-2
                 ),
                 index >= Vertices.Length - rsize * 2
             ),
@@ -368,10 +384,11 @@ public struct ChunkRendererJob : IJobParallelFor
         for (int row = 2; row < VxRowSize.Length - 2; row++)
         {
             // whether it's this row
-            var thisRow = index < sum + VxRowSize[row];
+            var rowVx = VxRowSize[row]; // vertices for this row
+            var thisRow = index < sum + rowVx && index >= sum;
             innerI.y = math.select(innerI.y, row, thisRow);
             // checking whether its main vertice row, if yes doing extra calculation for X
-            var mainVertRow = thisRow && VxRowSize[row] != 4;
+            var mainVertRow = thisRow && rowVx != 4;
 
             var curRowI = index - sum; // index on current row
             innerI.x = math.select(
@@ -393,8 +410,8 @@ public struct ChunkRendererJob : IJobParallelFor
                     math.select(
                         (curRowI - 1) * DetailIncrement + 1, // middle
                         // right side
-                        rsize + curRowI - VxRowSize[row],
-                        curRowI >= VxRowSize[row] - 2
+                        rsize + curRowI - rowVx,
+                        curRowI >= rowVx - 2
                     ),
                     // left side
                     curRowI,

@@ -208,7 +208,7 @@ public static class Generator
     /// <param name="heightmap">The generated heightmap, whose size is map size * map resolution^2</param>
     /// <param name="provinces">Generated map in row major order</param>
     public static void GenerateContinentalMap(
-        WorldSettings worldConf, HeightmapSettings heightConf, TemperatureSettings tempConf, out float[] heightmap, out Province[] provinces
+        IWorldSettings worldConf, IHeightmapSettings heightConf, ITemperatureSettings tempConf, out float[] heightmap, out Province[] provinces
     ) {
         var worldWidth = worldConf.GetMapWidth();
         var worldHeight = worldConf.GetMapHeight();
@@ -301,8 +301,6 @@ public static class Generator
             provHeights[i] = tot / (resolution * resolution);
         }
 
-        var freshWaterDistanceTask = CalculateFreshWaterDistance(provHeights, worldWidth, worldConf.GetSeaLevel());
-
         // calculating temperature map
         var tempCurveNative = new NativeArray<float>(tempConf.SplitTemperatureCurve(worldHeight), Allocator.TempJob);
         var temperatureJob = new TemperatureGenJob
@@ -316,8 +314,7 @@ public static class Generator
         };
         var tempHandle = temperatureJob.Schedule(worldSize, 64);
 
-        // Waiting fresh water to finish
-        var freshWaterDistance = freshWaterDistanceTask.GetAwaiter().GetResult();
+        var freshWaterDistance = CalculateFreshWaterDistance(provHeights, worldWidth, worldConf.GetSeaLevel());
         // while temperature finishes, getting max water distance and normalizing it
         Utilities.GetMinMaxValues(freshWaterDistance, out float minWaterDist, out float maxWaterDist);
         var freshWaterNormJob = new NormalizerJob
@@ -350,83 +347,83 @@ public static class Generator
         freshWaterNormJob.Datapoints.Dispose();
     }
 
-    private static async Task<float[]> CalculateFreshWaterDistance(float[] provincesHeight, int width, float seaLevel)
+    private static float[] CalculateFreshWaterDistance(float[] provincesHeight, int width, float seaLevel)
     {
-        return await Task.Run(() => {
-            /// Distance from fresh water for each province (0 = water, 1 = neighbour, so on..)
-            var waterDistances = new Dictionary<Vector2Int, float>();
-            var uncalculated = new List<Vector2Int>();
-            var worldHeight = provincesHeight.Length / width;
-            for (int i = 0; i < provincesHeight.Length; i++)
-            {
-                var x = i % width;
-                var y = i / width;
-                if (provincesHeight[i] <= seaLevel)
-                    waterDistances.Add(new(x, y), 0);
-                else
-                    uncalculated.Add(new(x, y));
-            }
+        /// Distance from fresh water for each province (0 = water, 1 = neighbour, so on..)
+        var waterDistances = new Dictionary<Vector2Int, float>();
+        var uncalculated = new List<Vector2Int>();
+        var worldHeight = provincesHeight.Length / width;
+        for (int i = 0; i < provincesHeight.Length; i++)
+        {
+            var x = i % width;
+            var y = i / width;
+            if (provincesHeight[i] <= seaLevel)
+                waterDistances.Add(new(x, y), 0);
+            else
+                uncalculated.Add(new(x, y));
+        }
 
-            while (uncalculated.Count > 0)
+        while (uncalculated.Count > 0)
+        {
+            var newUncalculated = new List<Vector2Int>();
+            foreach (var prov in uncalculated)
             {
-                var newUncalculated = new List<Vector2Int>();
-                foreach (var prov in uncalculated)
+                var corners = new Vector2Int[] { new(-1, -1), new(1, -1), new(-1, 1), new(1, 1) };
+                var sides = new Vector2Int[] { new(0, -1), new(0, 1), new(-1, 0), new(1, 0) };
+
+                var minDist = float.MaxValue;
+                foreach (var c in corners)
                 {
-                    var corners = new Vector2Int[] { new(-1, -1), new(1, -1), new(-1, 1), new(1, 1)};
-                    var sides = new Vector2Int[] { new(0, -1), new(0, 1), new(-1, 0), new(1, 0)};
+                    var pos = Utilities.GetDestinationCoordWithWorldWrap(width, worldHeight, prov, c);
+                    if (!waterDistances.ContainsKey(pos))
+                        continue;
 
-                    var minDist = float.MaxValue;
-                    foreach (var c in corners)
-                    {
-                        var pos = Utilities.GetDestinationCoordWithWorldWrap(width, worldHeight, prov, c);
-                        if (!waterDistances.ContainsKey(pos))
-                            continue;
+                    var d = waterDistances[pos] + Mathf.Sqrt(2);
+                    if (d < minDist)
+                        minDist = d;
+                }
+                foreach (var s in sides)
+                {
+                    var pos = Utilities.GetDestinationCoordWithWorldWrap(width, worldHeight, prov, s);
+                    if (!waterDistances.ContainsKey(pos))
+                        continue;
 
-                        var d = waterDistances[pos] + Mathf.Sqrt(2);
-                        if (d < minDist)
-                            minDist = d;
-                    }
-                    foreach (var s in sides)
-                    {
-                        var pos = Utilities.GetDestinationCoordWithWorldWrap(width, worldHeight, prov, s);
-                        if (!waterDistances.ContainsKey(pos))
-                            continue;
-
-                        var d = waterDistances[pos] + 1f;
-                        if (d < minDist)
-                            minDist = d;
-                    }
-
-                    if (minDist == float.MaxValue)
-                    {
-                        // none of the neighbours are calculated yet
-                        newUncalculated.Add(prov);
-                    } else
-                    {
-                        waterDistances[prov] = minDist;
-                    }
+                    var d = waterDistances[pos] + 1f;
+                    if (d < minDist)
+                        minDist = d;
                 }
 
-                if (newUncalculated.Count == uncalculated.Count) {
-                    // none of the provinces are water?
-                    // adding remaining provinces to dictionary with distance of 1
-                    foreach (var prov in newUncalculated)
-                    {
-                        waterDistances[prov] = 1f;
-                    }
-                    break;
+                if (minDist == float.MaxValue)
+                {
+                    // none of the neighbours are calculated yet
+                    newUncalculated.Add(prov);
                 }
-
-                uncalculated = newUncalculated;
+                else
+                {
+                    waterDistances[prov] = minDist;
+                }
             }
 
-            var finalOutput = new float[provincesHeight.Length];
-            foreach (var key in waterDistances.Keys)
+            if (newUncalculated.Count == uncalculated.Count)
             {
-                finalOutput[key.y * width + key.x] = waterDistances[key];
+                // none of the provinces are water?
+                // adding remaining provinces to dictionary with distance of 1
+                foreach (var prov in newUncalculated)
+                {
+                    waterDistances[prov] = 1f;
+                }
+                break;
             }
 
-            return finalOutput;
-        });
+            uncalculated = newUncalculated;
+        }
+
+        var finalOutput = new float[provincesHeight.Length];
+        foreach (var key in waterDistances.Keys)
+        {
+            finalOutput[key.y * width + key.x] = waterDistances[key];
+        }
+
+        return finalOutput;
     }
 }

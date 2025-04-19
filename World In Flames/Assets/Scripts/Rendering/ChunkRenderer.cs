@@ -16,7 +16,9 @@ public class ChunkRenderer : MonoBehaviour
     private MeshCollider meshCollider;
 
     private float[] heightmap;
+
     private float seaLevel;
+    private Vector2Int heightmapIndex;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -60,14 +62,13 @@ public class ChunkRenderer : MonoBehaviour
     
     private void RegenerateMesh(int detailIncrement = 1)
     {
-        
+        VerifyComponents();
         var hmapSize = (int)Mathf.Sqrt(heightmap.Length);
         var hmapNative = new NativeArray<float>(heightmap, Allocator.TempJob);
 
         // for mesh
         Vector3[] meshVertices;
         Vector3[] meshNormals;
-        Vector2[] meshUVs;
         int[] meshTriangles;
         var vxPerRow = new NativeArray<int>(hmapSize - 2, Allocator.TempJob);
 
@@ -98,12 +99,10 @@ public class ChunkRenderer : MonoBehaviour
             meshVertices = new Vector3[sum];
         }
         meshNormals = new Vector3[meshVertices.Length];
-        meshUVs = new Vector2[meshVertices.Length];
 
         // job stuff
         var vertices = new NativeArray<float3>(meshVertices.Length, Allocator.TempJob);
         var normals = new NativeArray<float3>(meshVertices.Length, Allocator.TempJob);
-        var uvs = new NativeArray<float2>(meshVertices.Length, Allocator.TempJob);
         var quads = new NativeArray<MeshQuad>(meshVertices.Length, Allocator.TempJob);
         if (detailIncrement == 1) {
             // best quality, using HD job
@@ -115,7 +114,6 @@ public class ChunkRenderer : MonoBehaviour
 
                 // outputs
                 Vertices = vertices,
-                UVs = uvs,
                 Normals = normals,
                 Quads = quads
             };
@@ -132,7 +130,6 @@ public class ChunkRenderer : MonoBehaviour
                 VxRowSize = vxPerRow,
                 // outputs
                 Vertices = vertices,
-                UVs = uvs,
                 Normals = normals,
                 Quads = quads
             };
@@ -146,7 +143,6 @@ public class ChunkRenderer : MonoBehaviour
         {
             meshVertices[i] = new(vertices[i].x, vertices[i].y, vertices[i].z);
             meshNormals[i] = new(normals[i].x, normals[i].y, normals[i].z);
-            meshUVs[i] = new(uvs[i].x, uvs[i].y);
             if (quads[i].Valid)
             {
                 var q = quads[i];
@@ -162,7 +158,6 @@ public class ChunkRenderer : MonoBehaviour
         // cleanup
         vertices.Dispose();
         normals.Dispose();
-        uvs.Dispose();
         quads.Dispose();
         hmapNative.Dispose();
         vxPerRow.Dispose();
@@ -172,9 +167,9 @@ public class ChunkRenderer : MonoBehaviour
         {
             vertices = meshVertices,
             normals = meshNormals,
-            uv = meshUVs,
             triangles = meshTriangles,
         };
+        //mesh.RecalculateNormals();
         meshFilter.mesh = mesh;
         meshCollider.sharedMesh = mesh;
     }
