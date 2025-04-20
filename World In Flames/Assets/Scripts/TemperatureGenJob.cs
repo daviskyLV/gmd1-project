@@ -42,6 +42,6 @@ public struct TemperatureGenJob : IJobParallelFor
         var y = index / MapWidth;
         var altitudeProgress = math.max(0f, Heightmap[index] - SeaLevel) / (1f - SeaLevel);
         var baseTemp = TemperatureCurve[y];
-        TemperatureMap[index] = math.max(0f, baseTemp - Utilities.CalculateEasingFunction(altitudeProgress, AltitudeImpactOnTemperature));
+        TemperatureMap[index] = math.max(0f, baseTemp - BurstUtilities.CalculateEasingFunction(altitudeProgress, AltitudeImpactOnTemperature));
     }
 }

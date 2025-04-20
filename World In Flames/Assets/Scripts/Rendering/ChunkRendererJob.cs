@@ -157,12 +157,12 @@ public struct ChunkRendererJob : IJobParallelFor
         var yp1 = HmapCoord(hmapIndex + HeightmapSize); // y+1
         var xp1yp1 = HmapCoord(hmapIndex + HeightmapSize + 1); // x+1;y+1
         // normals that often repeat for use cases
-        var Anorm = Utilities.CalculateNormal(xm1ym1, x0y0, xm1);
-        var Bnorm = Utilities.CalculateNormal(xm1ym1, ym1, x0y0);
-        var Cnorm = Utilities.CalculateNormal(xm1, x0y0, yp1);
-        var Dnorm = Utilities.CalculateNormal(x0y0, xp1yp1, yp1);
-        var Enorm = Utilities.CalculateNormal(x0y0, xp1, xp1yp1);
-        var Fnorm = Utilities.CalculateNormal(ym1, xp1, x0y0);
+        var Anorm = BurstUtilities.CalculateNormal(xm1ym1, x0y0, xm1);
+        var Bnorm = BurstUtilities.CalculateNormal(xm1ym1, ym1, x0y0);
+        var Cnorm = BurstUtilities.CalculateNormal(xm1, x0y0, yp1);
+        var Dnorm = BurstUtilities.CalculateNormal(x0y0, xp1yp1, yp1);
+        var Enorm = BurstUtilities.CalculateNormal(x0y0, xp1, xp1yp1);
+        var Fnorm = BurstUtilities.CalculateNormal(ym1, xp1, x0y0);
         float3 normSum = new();
         if ((vertType & VerticeType.Edge) != 0)
         {
@@ -182,12 +182,12 @@ public struct ChunkRendererJob : IJobParallelFor
                 var ypD = HmapCoord(hmapIndex + DetailIncrement * HeightmapSize); // y+Detail
                 var xpDypD = HmapCoord(hmapIndex + DetailIncrement * (HeightmapSize + 1)); // x+Detail; y+Detail
 
-                Anorm = Utilities.CalculateNormal(xmDymD, x0y0, xmD);
-                Bnorm = Utilities.CalculateNormal(xmDymD, ymD, x0y0);
-                Cnorm = Utilities.CalculateNormal(xmD, x0y0, ypD);
-                Dnorm = Utilities.CalculateNormal(x0y0, xpDypD, ypD);
-                Enorm = Utilities.CalculateNormal(x0y0, xpD, xpDypD);
-                Fnorm = Utilities.CalculateNormal(ymD, xpD, x0y0);
+                Anorm = BurstUtilities.CalculateNormal(xmDymD, x0y0, xmD);
+                Bnorm = BurstUtilities.CalculateNormal(xmDymD, ymD, x0y0);
+                Cnorm = BurstUtilities.CalculateNormal(xmD, x0y0, ypD);
+                Dnorm = BurstUtilities.CalculateNormal(x0y0, xpDypD, ypD);
+                Enorm = BurstUtilities.CalculateNormal(x0y0, xpD, xpDypD);
+                Fnorm = BurstUtilities.CalculateNormal(ymD, xpD, x0y0);
                 normSum = Anorm + Bnorm + Cnorm + Dnorm + Enorm + Fnorm;
             }
             else if (math.all(inI == new int2(1, 1)))
@@ -196,8 +196,8 @@ public struct ChunkRendererJob : IJobParallelFor
                 var xpD = HmapCoord(hmapIndex + DetailIncrement); // x+Detail
                 var ypD = HmapCoord(hmapIndex + DetailIncrement * HeightmapSize); // y+Detail
                 var xpDypD = HmapCoord(hmapIndex + DetailIncrement * (HeightmapSize + 1)); // x+Detail; y+Detail
-                var Dbot = Utilities.CalculateNormal(x0y0, xpDypD, ypD);
-                var Dtop = Utilities.CalculateNormal(x0y0, xpD, xpDypD);
+                var Dbot = BurstUtilities.CalculateNormal(x0y0, xpDypD, ypD);
+                var Dtop = BurstUtilities.CalculateNormal(x0y0, xpD, xpDypD);
                 normSum = Anorm + Bnorm + Cnorm + Fnorm + Dbot + Dtop;
             }
             else if (math.all(inI == new int2(rsize - 2, 1)))
@@ -205,7 +205,7 @@ public struct ChunkRendererJob : IJobParallelFor
                 // top right corner
                 var xmD = HmapCoord(hmapIndex - DetailIncrement); // x-Detail
                 var ypD = HmapCoord(hmapIndex + DetailIncrement * HeightmapSize); // y + Detail
-                var big = Utilities.CalculateNormal(xmD, x0y0, ypD);
+                var big = BurstUtilities.CalculateNormal(xmD, x0y0, ypD);
                 normSum = big + Anorm + Bnorm + Fnorm + Dnorm + Enorm;
             }
             else if (math.all(inI == new int2(1, rsize - 2)))
@@ -213,7 +213,7 @@ public struct ChunkRendererJob : IJobParallelFor
                 // bottom left corner
                 var ymD = HmapCoord(hmapIndex - DetailIncrement * HeightmapSize); // y - Detail
                 var xpD = HmapCoord(hmapIndex + DetailIncrement); // x + Detail
-                var big = Utilities.CalculateNormal(ymD, xpD, x0y0);
+                var big = BurstUtilities.CalculateNormal(ymD, xpD, x0y0);
                 normSum = big + Anorm + Bnorm + Cnorm + Dnorm + Enorm;
             }
             else if (math.all(inI == new int2(rsize - 2, rsize - 2)))
@@ -222,8 +222,8 @@ public struct ChunkRendererJob : IJobParallelFor
                 var xmD = HmapCoord(hmapIndex - DetailIncrement); // x-Detail
                 var ymD = HmapCoord(hmapIndex - DetailIncrement * HeightmapSize); // y-Detail
                 var xmDymD = HmapCoord(hmapIndex - DetailIncrement * (HeightmapSize + 1)); // x-Detail; y-Detail
-                var Dbot = Utilities.CalculateNormal(xmDymD, x0y0, xmD);
-                var Dtop = Utilities.CalculateNormal(xmDymD, ymD, x0y0);
+                var Dbot = BurstUtilities.CalculateNormal(xmDymD, x0y0, xmD);
+                var Dtop = BurstUtilities.CalculateNormal(xmDymD, ymD, x0y0);
                 normSum = Dbot + Dtop + Fnorm + Cnorm + Dnorm + Enorm;
             }
             else if (inI.x == 1)
@@ -233,9 +233,9 @@ public struct ChunkRendererJob : IJobParallelFor
                 var xpD = HmapCoord(hmapIndex + DetailIncrement); // x+Detail
                 var ypD = HmapCoord(hmapIndex + DetailIncrement * HeightmapSize); // y+Detail
                 var xpDypD = HmapCoord(hmapIndex + DetailIncrement * (HeightmapSize + 1)); // x+Detail; y+Detail
-                var top = Utilities.CalculateNormal(ymD, xpD, x0y0);
-                var mid = Utilities.CalculateNormal(x0y0, xpD, xpDypD);
-                var bot = Utilities.CalculateNormal(x0y0, xpDypD, ypD);
+                var top = BurstUtilities.CalculateNormal(ymD, xpD, x0y0);
+                var mid = BurstUtilities.CalculateNormal(x0y0, xpD, xpDypD);
+                var bot = BurstUtilities.CalculateNormal(x0y0, xpDypD, ypD);
                 normSum = top + mid + bot + Anorm + Bnorm + Cnorm;
             }
             else if (inI.x == rsize - 2) {
@@ -244,9 +244,9 @@ public struct ChunkRendererJob : IJobParallelFor
                 var xmD = HmapCoord(hmapIndex - DetailIncrement); // x-Detail
                 var ymD = HmapCoord(hmapIndex - DetailIncrement * HeightmapSize); // y-Detail
                 var ypD = HmapCoord(hmapIndex + DetailIncrement * HeightmapSize); // y+Detail
-                var top = Utilities.CalculateNormal(xmDymD, ymD, x0y0);
-                var mid = Utilities.CalculateNormal(xmDymD, x0y0, xmD);
-                var bot = Utilities.CalculateNormal(xmD, x0y0, ymD);
+                var top = BurstUtilities.CalculateNormal(xmDymD, ymD, x0y0);
+                var mid = BurstUtilities.CalculateNormal(xmDymD, x0y0, xmD);
+                var bot = BurstUtilities.CalculateNormal(xmD, x0y0, ymD);
                 normSum = top + mid + bot + Fnorm + Dnorm + Enorm;
             }
             else if (inI.y == 1)
@@ -256,9 +256,9 @@ public struct ChunkRendererJob : IJobParallelFor
                 var xpD = HmapCoord(hmapIndex + DetailIncrement); // x+Detail
                 var ypD = HmapCoord(hmapIndex + DetailIncrement * HeightmapSize); // y+Detail
                 var xpDypD = HmapCoord(hmapIndex + DetailIncrement * (HeightmapSize + 1)); // x+Detail; y+Detail
-                var left = Utilities.CalculateNormal(xmD, x0y0, ypD);
-                var mid = Utilities.CalculateNormal(x0y0, xpDypD, ypD);
-                var right = Utilities.CalculateNormal(x0y0, xpD, xpDypD);
+                var left = BurstUtilities.CalculateNormal(xmD, x0y0, ypD);
+                var mid = BurstUtilities.CalculateNormal(x0y0, xpDypD, ypD);
+                var right = BurstUtilities.CalculateNormal(x0y0, xpD, xpDypD);
                 normSum = left + mid + right + Anorm + Bnorm + Fnorm;
             }
             else if (inI.y == rsize - 2)
@@ -268,9 +268,9 @@ public struct ChunkRendererJob : IJobParallelFor
                 var xmD = HmapCoord(hmapIndex - DetailIncrement); // x-Detail
                 var ymD = HmapCoord(hmapIndex - DetailIncrement * HeightmapSize); // y-Detail
                 var xpD = HmapCoord(hmapIndex + DetailIncrement); // x+Detail
-                var left = Utilities.CalculateNormal(xmDymD, x0y0, xmD);
-                var mid = Utilities.CalculateNormal(xmDymD, ymD, x0y0);
-                var right = Utilities.CalculateNormal(ymD, xpD, x0y0);
+                var left = BurstUtilities.CalculateNormal(xmDymD, x0y0, xmD);
+                var mid = BurstUtilities.CalculateNormal(xmDymD, ymD, x0y0);
+                var right = BurstUtilities.CalculateNormal(ymD, xpD, x0y0);
                 normSum = left + mid + right + Cnorm + Dnorm + Enorm;
             }
         } else if ((vertType & VerticeType.EdgeConnection) != 0) {

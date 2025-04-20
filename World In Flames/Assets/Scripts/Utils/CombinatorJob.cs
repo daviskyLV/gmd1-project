@@ -20,6 +20,6 @@ public struct CombinatorJob : IJobParallelFor
 
     public void Execute(int index)
     {
-        Output[index] = Utilities.CalculateValueMultiplier(InputA[index], InputB[index], CombinationTechnique);
+        Output[index] = BurstUtilities.CalculateValueMultiplier(InputA[index], InputB[index], CombinationTechnique);
     }
 }

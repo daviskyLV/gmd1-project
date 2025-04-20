@@ -94,12 +94,12 @@ public struct HDChunkRendererJob : IJobParallelFor
         var yp1 = HmapCoord(hmapIndex + HeightmapSize); // y+1
         var xp1yp1 = HmapCoord(hmapIndex + HeightmapSize + 1); // x+1;y+1
         // normals that often repeat for use cases
-        var Anorm = Utilities.CalculateNormal(xm1ym1, x0y0, xm1);
-        var Bnorm = Utilities.CalculateNormal(xm1ym1, ym1, x0y0);
-        var Cnorm = Utilities.CalculateNormal(xm1, x0y0, yp1);
-        var Dnorm = Utilities.CalculateNormal(x0y0, xp1yp1, yp1);
-        var Enorm = Utilities.CalculateNormal(x0y0, xp1, xp1yp1);
-        var Fnorm = Utilities.CalculateNormal(ym1, xp1, x0y0);
+        var Anorm = BurstUtilities.CalculateNormal(xm1ym1, x0y0, xm1);
+        var Bnorm = BurstUtilities.CalculateNormal(xm1ym1, ym1, x0y0);
+        var Cnorm = BurstUtilities.CalculateNormal(xm1, x0y0, yp1);
+        var Dnorm = BurstUtilities.CalculateNormal(x0y0, xp1yp1, yp1);
+        var Enorm = BurstUtilities.CalculateNormal(x0y0, xp1, xp1yp1);
+        var Fnorm = BurstUtilities.CalculateNormal(ym1, xp1, x0y0);
 
         var normSum = Anorm + Bnorm + Cnorm + Dnorm + Enorm + Fnorm;
         Normals[index] = math.normalize(normSum);
