@@ -8,9 +8,7 @@ using Unity.Mathematics;
 /// Used to compute a mesh's vertices, triangles, UVs and normals. Job size should be Vertices length. Mesh is assumed to be a square.
 /// Works based on this principle: https://youtu.be/c2BUgXdjZkg?si=CJVV-fBdKOXxSmDF&t=164
 /// </summary>
-#if !UNITY_EDITOR
 [BurstCompile]
-#endif
 public struct ChunkRendererJob : IJobParallelFor
 {
     /// <summary>
@@ -38,6 +36,11 @@ public struct ChunkRendererJob : IJobParallelFor
     /// </summary>
     [ReadOnly]
     public int DetailIncrement;
+    /// <summary>
+    /// How many heightmap points are per province in each axis
+    /// </summary>
+    [ReadOnly]
+    public int ProvinceResolution;
 
     /// <summary>
     /// Mesh vertices, length = mesh edge vertices + main vertices + edge connection vertices
@@ -65,6 +68,7 @@ public struct ChunkRendererJob : IJobParallelFor
         var vertType = CalculateVerticeType(inI);
 
         /// VERTICE COORDINATES ///
+        var vC2 = new float2(inI.x / (float)ProvinceResolution, inI.y / (float)ProvinceResolution);
         if ((vertType & VerticeType.EdgeConnection) != 0 && (vertType & VerticeType.Main) == 0)
         {
             // edge connection BUT not a main vertice
@@ -75,7 +79,7 @@ public struct ChunkRendererJob : IJobParallelFor
                 var x1 = new int2((inI.x - 1) / DetailIncrement * DetailIncrement + 1, inI.y);
                 var x2 = x1 + new int2(DetailIncrement, 0);
                 var lerped = math.lerp(GetHeightAt(x1), GetHeightAt(x2), xprog);
-                Vertices[index] = new(inI.x, lerped, inI.y);
+                Vertices[index] = new(vC2.x, lerped, vC2.y);
             } else
             {
                 // vertical
@@ -83,12 +87,12 @@ public struct ChunkRendererJob : IJobParallelFor
                 var y1 = new int2(inI.x, (inI.y - 1) / DetailIncrement * DetailIncrement + 1);
                 var y2 = y1 + new int2(0, DetailIncrement);
                 var lerped = math.lerp(GetHeightAt(y1), GetHeightAt(y2), yprog);
-                Vertices[index] = new(inI.x, lerped, inI.y);
+                Vertices[index] = new(vC2.x, lerped, vC2.y);
             }
         } else
         {
             // not edge connection, using normal height
-            Vertices[index] = new(inI.x, math.max(SeaLevel, Heightmap[hmapIndex]), inI.y);
+            Vertices[index] = new(vC2.x, math.max(SeaLevel, Heightmap[hmapIndex]), vC2.y);
         }
 
         /// CALCULATING QUADS ///

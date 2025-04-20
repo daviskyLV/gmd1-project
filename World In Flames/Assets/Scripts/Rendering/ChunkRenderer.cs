@@ -4,7 +4,6 @@ using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
-using static UnityEditor.Searcher.SearcherWindow.Alignment;
 
 [RequireComponent(typeof(MeshFilter))]
 [RequireComponent(typeof(MeshRenderer))]
@@ -18,6 +17,7 @@ public class ChunkRenderer : MonoBehaviour
     private float[] heightmap;
 
     private float seaLevel;
+    private int provinceResolution;
     private Vector2Int heightmapIndex;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -42,10 +42,11 @@ public class ChunkRenderer : MonoBehaviour
     /// <param name="heightmap">Heightmap data</param>
     /// <param name="seaLevel">Sea level of the chunk, 0-1</param>
     /// <param name="detailIncrement">How much detail to skip in the middle of the mesh, 1 = highest quality, 2 = 50% lower..</param>
-    public IEnumerator RegenerateMesh(float[] heightmap, float seaLevel, int detailIncrement = 1)
+    public IEnumerator RegenerateMesh(float[] heightmap, float seaLevel, int provinceResolution, int detailIncrement = 1)
     {
         this.heightmap = heightmap;
         this.seaLevel = seaLevel;
+        this.provinceResolution = provinceResolution;
         RegenerateMesh(detailIncrement);
         yield return null;
     }
@@ -53,13 +54,17 @@ public class ChunkRenderer : MonoBehaviour
     /// <summary>
     /// Used to change the LOD of the mesh after already generating it
     /// </summary>
-    /// <param name="detailIncrement">How much detail to skip in the middle of the mesh, 1 = highest quality, 2 = 50% lower..</param>
+    /// <param name="detailIncrement">How much detail to skip in the middle of the mesh, must be a divisor of sqrt(chunkHeightmap.Length)-5</param>
     public IEnumerator ChangeLOD(int detailIncrement = 1)
     {
         RegenerateMesh(detailIncrement);
         yield return null;
     }
-    
+
+    /// <summary>
+    /// Internal method that regenerates mesh based on chunk's heightmap, sea level and province resolution settings
+    /// </summary>
+    /// <param name="detailIncrement">How much detail to skip in the middle of the mesh, must be a divisor of sqrt(chunkHeightmap.Length)-5</param>
     private void RegenerateMesh(int detailIncrement = 1)
     {
         VerifyComponents();
@@ -111,6 +116,7 @@ public class ChunkRenderer : MonoBehaviour
                 Heightmap = hmapNative,
                 HeightmapSize = hmapSize,
                 SeaLevel = seaLevel,
+                ProvinceResolution = provinceResolution,
 
                 // outputs
                 Vertices = vertices,
@@ -128,6 +134,7 @@ public class ChunkRenderer : MonoBehaviour
                 SeaLevel = seaLevel,
                 DetailIncrement = detailIncrement,
                 VxRowSize = vxPerRow,
+                ProvinceResolution = provinceResolution,
                 // outputs
                 Vertices = vertices,
                 Normals = normals,

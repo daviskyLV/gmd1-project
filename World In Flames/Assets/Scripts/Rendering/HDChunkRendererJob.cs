@@ -25,6 +25,11 @@ public struct HDChunkRendererJob : IJobParallelFor
     /// </summary>
     [ReadOnly]
     public float SeaLevel;
+    /// <summary>
+    /// How many heightmap points are per province in each axis
+    /// </summary>
+    [ReadOnly]
+    public int ProvinceResolution;
 
     /// <summary>
     /// Mesh vertices, length = mesh edge vertices + main vertices + edge connection vertices
@@ -50,7 +55,7 @@ public struct HDChunkRendererJob : IJobParallelFor
         var hmapIndex = (innerI.y + 1) * HeightmapSize + innerI.x + 1;
 
         /// VERTICES ///
-        Vertices[index] = new(innerI.x, math.max(SeaLevel, Heightmap[hmapIndex]), innerI.y);
+        Vertices[index] = new(innerI.x / (float)ProvinceResolution, math.max(SeaLevel, Heightmap[hmapIndex]), innerI.y / (float)ProvinceResolution);
 
         /// QUADS ///
         if (math.all(innerI < rsize - 1))

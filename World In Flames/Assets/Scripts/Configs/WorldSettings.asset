@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   seed: 22
   continentSize: 63
-  mapWidth: 34
-  mapHeight: 34
+  mapWidth: 245
+  mapHeight: 245
   mapResolution: 1
   seaLevel: 0.1

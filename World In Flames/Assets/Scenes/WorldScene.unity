@@ -514,6 +514,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: MapChunk
       objectReference: {fileID: 0}
+    - target: {fileID: 8596270786816562072, guid: 35535870512e8b54d83198101e797678, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: -876546973899608171, guid: a3a0ffa8801fd4f4fb94adc8828ef410, type: 3}
     - target: {fileID: 8794442147291182520, guid: 35535870512e8b54d83198101e797678, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0

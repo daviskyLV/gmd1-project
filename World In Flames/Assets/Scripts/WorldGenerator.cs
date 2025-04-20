@@ -74,7 +74,7 @@ public class WorldGenerator : MonoBehaviour
 
         var lowChunk = Instantiate(chunkPrefab, transform);
         var lowchRender = lowChunk.GetComponent<ChunkRenderer>();
-        StartCoroutine(lowchRender.RegenerateMesh(generatedHeightmap, worldSettings.GetSeaLevel(), 4));
+        StartCoroutine(lowchRender.RegenerateMesh(generatedHeightmap, worldSettings.GetSeaLevel(), worldSettings.GetMapResolution(), 1));
         lowChunk.transform.position = new(0, 0, 0);
 
         yield return null;
