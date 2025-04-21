@@ -309,7 +309,7 @@ public struct ChunkRendererJob : IJobParallelFor
     }
     private readonly float GetHeightAt(int hmapIndex)
     {
-        return math.max(SeaLevel, Heightmap[hmapIndex]);
+        return Heightmap[hmapIndex]; //math.max(SeaLevel, Heightmap[hmapIndex]);
     }
 
     private readonly VerticeType CalculateVerticeType(int2 innerI) {

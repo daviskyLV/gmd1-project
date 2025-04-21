@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2dac8289d85df1944919f8ae54c8a337, type: 3}
   m_Name: HeightmapSettings
   m_EditorClassIdentifier: 
-  offset: {x: 0, y: 0}
+  offset: {x: 0.79, y: 0}
   octaves: 7
-  persistence: 0.584
+  persistence: 0.704
   roughness: 1.94
   smoothness: 56.2
-  continentStartImpact: 0.096
+  continentStartImpact: 0

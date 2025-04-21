@@ -55,7 +55,7 @@ public struct HDChunkRendererJob : IJobParallelFor
         var hmapIndex = (innerI.y + 1) * HeightmapSize + innerI.x + 1;
 
         /// VERTICES ///
-        Vertices[index] = new(innerI.x / (float)ProvinceResolution, math.max(SeaLevel, Heightmap[hmapIndex]), innerI.y / (float)ProvinceResolution);
+        Vertices[index] = new(innerI.x / (float)ProvinceResolution, Heightmap[hmapIndex] /*math.max(SeaLevel, Heightmap[hmapIndex])*/, innerI.y / (float)ProvinceResolution);
         //Vertices[index] = new(innerI.x, math.max(SeaLevel, Heightmap[hmapIndex]), innerI.y);
 
         /// QUADS ///
@@ -114,7 +114,7 @@ public struct HDChunkRendererJob : IJobParallelFor
 
     private readonly float GetHeightAt(int hmapIndex)
     {
-        return math.max(SeaLevel, Heightmap[hmapIndex]);
+        return Heightmap[hmapIndex]; //math.max(SeaLevel, Heightmap[hmapIndex]);
     }
 
     private readonly float3 HmapCoord(int index)

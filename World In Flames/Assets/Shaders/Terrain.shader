@@ -3,12 +3,17 @@ Shader "Custom/Terrain"
     Properties
     {
         // some color settings
+        [Header(Color Settings)]
         _OceanColor ("Ocean Color", Color) = (1,1,1,1)
         _SeaColor ("Sea Color", Color) = (1,1,1,1)
         _DebugGroundColor ("Debug Ground Color", Color) = (1,1,1,1)
+        [Toggle] _DebugMode ("Debug Mode (water & ground)", Float) = 0
         // textures
+        [Header(Textures)]
         _GrassTex ("Grass Texture", 2D) = "white" {}
+        _GrassTexScale ("Grass Texture Scale", Float) = 1
         _SnowTex ("Snow Texture", 2D) = "white" {}
+        _SnowTexScale ("Snow Texture Scale", Float) = 1
     }
     SubShader
     {
@@ -23,11 +28,15 @@ Shader "Custom/Terrain"
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
+            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS
+            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS_CASCADE
+
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl"
 
-            //EASING FUNCTION ENUMS
+            // EASING FUNCTION ENUMS
             #define EaseLinear      0
             #define EaseInSine      1
             #define EaseOutSine     2
@@ -36,6 +45,9 @@ Shader "Custom/Terrain"
             #define EaseOutCubic    5
             #define EaseInOutCubic  6
             #define EaseInQuadratic 7
+            // TEXTURE ENUMS
+            #define GrassTexIndex   0
+            #define SnowTexIndex    1
 
             /// SETTINGS
             TEXTURE2D(_TerrainData); // R = height, G = temperature, B = humidity
@@ -43,11 +55,14 @@ Shader "Custom/Terrain"
             float2 _MapSize; // Width, Height for Height & Humidity
             int _ProvinceResolution; // pixels per province
             float _SeaLevel; // sea level
+            float _DebugMode; // if true, no textures will be used 
             // textures
             TEXTURE2D(_GrassTex);
             SAMPLER(sampler_GrassTex);
+            float _GrassTexScale;
             TEXTURE2D(_SnowTex);
             SAMPLER(sampler_SnowTex);
+            float _SnowTexScale;
             // additional colors
             float4 _OceanColor;
             float4 _SeaColor;
@@ -62,8 +77,11 @@ Shader "Custom/Terrain"
             struct FragmentData
             {
                 float4 positionHCS : SV_POSITION;
-                float3 worldPos : TEXCOORD0; // world position
-                float3 normalWS : TEXCOORD1; // normal world space
+                float3 newWorldPos : TEXCOORD0; // modified (eg. waves) world position
+                float3 realObjPos : TEXCOORD1; // real object pos
+                float3 newObjPos : TEXCOORD2; // new object pos
+                float3 normalWS : TEXCOORD3; // normal world space
+                float4 shadowCoord : TEXCOORD4;
             };
 
             // Reimplementation from BurstUtilities
@@ -107,12 +125,43 @@ Shader "Custom/Terrain"
             FragmentData vert (VertexData IN)
             {
                 FragmentData OUT;
-                float3 positionWS = TransformObjectToWorld(IN.positionOS); // to world space
-                float3 normalWS = TransformObjectToWorldNormal(IN.normalOS);
-                OUT.positionHCS = TransformWorldToHClip(positionWS.xyz);
-                OUT.worldPos = positionWS.xyz;
-                OUT.normalWS = normalWS;
+                VertexPositionInputs realVxInput = GetVertexPositionInputs(IN.positionOS);
+                float3 newObjPos = float3(IN.positionOS.x, max(IN.positionOS.y, _SeaLevel), IN.positionOS.z); // flattening sea vertices
+                VertexPositionInputs newVxInput = GetVertexPositionInputs(newObjPos);
+
+                OUT.positionHCS = newVxInput.positionCS; // passing the new vertex position data to screen
+                OUT.newWorldPos = newVxInput.positionWS;
+                OUT.realObjPos = IN.positionOS;
+                OUT.newObjPos = newObjPos;
+                OUT.normalWS = TransformObjectToWorldDir(IN.normalOS);
+                OUT.shadowCoord = GetShadowCoord(newVxInput);
                 return OUT;
+            }
+
+            // code by Sebastian Lague adapted from Surface Shader to HLSL Shader
+            // https://youtu.be/XjH-UoyaTgs?si=di0VP-33FN3jvF0R&t=1448
+            float3 sampleTexture(float2 pos, int textureIndex) {
+                uint width, height;
+                if (textureIndex == GrassTexIndex) {
+                    _GrassTex.GetDimensions(width, height);
+                    float2 wh = float2(width, height);
+                    float2 uv = saturate((pos * _GrassTexScale) % wh / wh);
+                    return SAMPLE_TEXTURE2D(_GrassTex, sampler_GrassTex, uv).rgb;
+                } else if (textureIndex == SnowTexIndex) {
+                    _SnowTex.GetDimensions(width, height);
+                    float2 wh = float2(width, height);
+                    float2 uv = saturate((pos * _SnowTexScale) % wh / wh);
+                    return SAMPLE_TEXTURE2D(_SnowTex, sampler_SnowTex, uv).rgb;
+                }
+                // fallback
+                return float3(pos.x % 2, pos.y % 2, 1);
+            }
+
+            float3 triplanar (float3 worldPos, float3 blendAxes, int texIndex) {
+                float3 xProjection = sampleTexture(worldPos.yz, texIndex) * blendAxes.x;
+                float3 yProjection = sampleTexture(worldPos.xz, texIndex) * blendAxes.y;
+                float3 zProjection = sampleTexture(worldPos.xy, texIndex) * blendAxes.z;
+                return xProjection + yProjection + zProjection;
             }
 
             // actual pixel coloring method
@@ -120,16 +169,17 @@ Shader "Custom/Terrain"
             float4 frag (FragmentData IN) : SV_Target
             {
                 // getting main light data
-                Light mainLight = GetMainLight();
-                float3 lightDir = mainLight.direction;
+                Light mainLight = GetMainLight(IN.shadowCoord);
                 float3 lightColor = mainLight.color;
+                float shadowAttenuation = mainLight.shadowAttenuation; // 0 = fully shadowed, 1 = lit
                 
                 //Lambert Diffuse Lighting
                 float3 normal = normalize(IN.normalWS);
+                float3 lightDir = mainLight.direction;
                 float NdotL = max(dot(normal, lightDir), 0);
 
                 // converting world position to coordinates
-                float2 arrCoord = floor(IN.worldPos.xz * _ProvinceResolution);
+                float2 arrCoord = IN.newWorldPos.xz * _ProvinceResolution;
                 // since data is in a texture, we normalize to UV
                 float2 uv = (arrCoord + 0.5) / _MapSize;
                 uv = saturate(uv);
@@ -140,17 +190,36 @@ Shader "Custom/Terrain"
                 float temperature = SAMPLE_TEXTURE2D(_TerrainData, sampler_TerrainData, uv).g;
                 float humidity = SAMPLE_TEXTURE2D(_TerrainData, sampler_TerrainData, uv).b;
 
-                float4 terrainColor = _DebugGroundColor;
+                float4 terrainColor = float4(IN.newWorldPos.x % 2, IN.newWorldPos.z % 2, 1, 1);
                 // below waterline, blending between ocean and sea colors
-                if (height < _SeaLevel)
+                if (IN.realObjPos.y < _SeaLevel)
                 {
-                    terrainColor = lerp(_OceanColor, _SeaColor, calculateEasing(saturate(height/_SeaLevel), EaseInQuadratic));
+                    // couldnt get correctly working results with height, so using world space
+                    terrainColor = lerp(_OceanColor, _SeaColor, calculateEasing(saturate(IN.realObjPos.y/_SeaLevel), EaseInQuadratic));
+                } else {
+                    // above waterline, showing ground Textures
+                    // code by Sebastian Lague adapted from Surface Shader to HLSL Shader
+                    // https://youtu.be/XjH-UoyaTgs?si=di0VP-33FN3jvF0R&t=1448
+                    if (_DebugMode > 0.5) {
+                        // debug mode active, showing debug ground color
+                        terrainColor = _DebugGroundColor;
+                    } else {
+                        float3 blendAxes = abs(IN.normalWS);
+                        blendAxes /= blendAxes.x + blendAxes.y + blendAxes.z;
+                        //terrainColor.rgb = triplanar(IN.worldPos, blendAxes, GrassTexIndex); // grass
+                        if (temperature < 0.2) {
+                            terrainColor.rgb = triplanar(IN.newWorldPos, blendAxes, SnowTexIndex); //snow
+                        } else {
+                            terrainColor.rgb = triplanar(IN.newWorldPos, blendAxes, GrassTexIndex); //grass
+                        }
+                    }
                 }
 
                 // applying lighting
-                float3 finalColor = terrainColor.rgb * lightColor * NdotL;
+                float3 ambient = terrainColor.rgb * unity_AmbientSky.rgb;
+                float3 diffuse = terrainColor.rgb * lightColor * NdotL * shadowAttenuation;
 
-                return float4(finalColor, terrainColor.a);
+                return float4(ambient + diffuse, 1.0);
             }
 
             ENDHLSL

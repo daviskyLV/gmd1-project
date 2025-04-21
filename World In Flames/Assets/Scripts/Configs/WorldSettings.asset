@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6fa269730eaffd241aa03debb424d51a, type: 3}
   m_Name: WorldSettings
   m_EditorClassIdentifier: 
-  seed: 22
+  seed: 95
   continentSize: 64
-  mapWidth: 121
-  mapHeight: 121
-  mapResolution: 2
+  mapWidth: 59
+  mapHeight: 59
+  mapResolution: 4
   seaLevel: 0.44
