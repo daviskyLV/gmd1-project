@@ -25,6 +25,7 @@ Shader "Custom/Terrain"
             #pragma fragment frag
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
             //EASING FUNCTION ENUMS
             #define EaseLinear      0
@@ -55,12 +56,14 @@ Shader "Custom/Terrain"
             struct VertexData
             {
                 float4 positionOS : POSITION;
+                float3 normalOS : NORMAL;
             };
 
             struct FragmentData
             {
                 float4 positionHCS : SV_POSITION;
-                float3 worldPos : TEXCOORD0;
+                float3 worldPos : TEXCOORD0; // world position
+                float3 normalWS : TEXCOORD1; // normal world space
             };
 
             // Reimplementation from BurstUtilities
@@ -105,8 +108,10 @@ Shader "Custom/Terrain"
             {
                 FragmentData OUT;
                 float3 positionWS = TransformObjectToWorld(IN.positionOS); // to world space
+                float3 normalWS = TransformObjectToWorldNormal(IN.normalOS);
                 OUT.positionHCS = TransformWorldToHClip(positionWS.xyz);
                 OUT.worldPos = positionWS.xyz;
+                OUT.normalWS = normalWS;
                 return OUT;
             }
 
@@ -114,6 +119,15 @@ Shader "Custom/Terrain"
             // same as surf in SurfaceShader (?)
             float4 frag (FragmentData IN) : SV_Target
             {
+                // getting main light data
+                Light mainLight = GetMainLight();
+                float3 lightDir = mainLight.direction;
+                float3 lightColor = mainLight.color;
+                
+                //Lambert Diffuse Lighting
+                float3 normal = normalize(IN.normalWS);
+                float NdotL = max(dot(normal, lightDir), 0);
+
                 // converting world position to coordinates
                 float2 arrCoord = floor(IN.worldPos.xz * _ProvinceResolution);
                 // since data is in a texture, we normalize to UV
@@ -126,13 +140,17 @@ Shader "Custom/Terrain"
                 float temperature = SAMPLE_TEXTURE2D(_TerrainData, sampler_TerrainData, uv).g;
                 float humidity = SAMPLE_TEXTURE2D(_TerrainData, sampler_TerrainData, uv).b;
 
+                float4 terrainColor = _DebugGroundColor;
                 // below waterline, blending between ocean and sea colors
                 if (height < _SeaLevel)
                 {
-                    return lerp(_OceanColor, _SeaColor, calculateEasing(saturate(height/_SeaLevel), EaseInQuadratic));
+                    terrainColor = lerp(_OceanColor, _SeaColor, calculateEasing(saturate(height/_SeaLevel), EaseInQuadratic));
                 }
 
-                return _DebugGroundColor;
+                // applying lighting
+                float3 finalColor = terrainColor.rgb * lightColor * NdotL;
+
+                return float4(finalColor, terrainColor.a);
             }
 
             ENDHLSL
