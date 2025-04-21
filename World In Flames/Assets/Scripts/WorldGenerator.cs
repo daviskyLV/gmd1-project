@@ -8,6 +8,8 @@ public class WorldGenerator : MonoBehaviour
     private bool regenerate = false;
     [SerializeField]
     private GameObject chunkPrefab;
+    [SerializeField]
+    private Material chunkMaterial;
     [Header("Base map generation")]
     [SerializeField]
     private WorldSettings worldSettings;
@@ -66,7 +68,36 @@ public class WorldGenerator : MonoBehaviour
         }
         provinces.Clear();
 
-        Generator.GenerateContinentalMap(worldSettings, heightmapSettings, temperatureSettings, out float[] generatedHeightmap, out Province[] generatedProvinces);
+        Generator.GenerateContinentalMap(worldSettings, heightmapSettings, temperatureSettings,
+            out float[] generatedHeightmap, out float[] generatedTemperatures, out float[] generatedHumidities, out Province[] generatedProvinces);
+
+        // converting terrain data into a texture for shader
+        var res = worldSettings.GetMapResolution();
+        var resSq = res * res;
+        var fullWidth = worldSettings.GetMapWidth() * res;
+        var fullHeight = worldSettings.GetMapHeight() * res;
+        var terrainDataArr = new Color[generatedHeightmap.Length];
+        for (int i = 0; i < terrainDataArr.Length; i++)
+        {
+            if (i / resSq >= generatedHumidities.Length)
+            {
+                Debug.LogWarning($"hum index too big! {i / resSq} out of {generatedHumidities.Length}, i: {i}, resSq: {resSq}, loop max: {terrainDataArr.Length}");
+            } 
+            terrainDataArr[i] = new(generatedHeightmap[i], generatedTemperatures[i], generatedHumidities[i / resSq], 1);
+        }
+        var terrainData = new Texture2D(fullWidth, fullHeight, TextureFormat.RGBAFloat, false, true);
+        terrainData.filterMode = FilterMode.Point;     // Disable blurring
+        terrainData.wrapMode = TextureWrapMode.Clamp;  // Clamp edges
+        terrainData.SetPixels(terrainDataArr);
+        terrainData.Apply(false, false);
+
+        // Setting shader data
+        chunkMaterial.SetTexture("_TerrainData", terrainData);
+        chunkMaterial.SetInteger("_ProvinceResolution", res);
+        chunkMaterial.SetVector("_MapSize", new(fullWidth, fullHeight));
+        chunkMaterial.SetFloat("_SeaLevel", worldSettings.GetSeaLevel());
+
+
         //var hdChunk = Instantiate(chunkPrefab, transform);
         //var hdchRender = hdChunk.GetComponent<ChunkRenderer>();
         //StartCoroutine(hdchRender.RegenerateMesh(generatedHeightmap, worldSettings.GetSeaLevel(), 1));

@@ -56,6 +56,7 @@ public struct HDChunkRendererJob : IJobParallelFor
 
         /// VERTICES ///
         Vertices[index] = new(innerI.x / (float)ProvinceResolution, math.max(SeaLevel, Heightmap[hmapIndex]), innerI.y / (float)ProvinceResolution);
+        //Vertices[index] = new(innerI.x, math.max(SeaLevel, Heightmap[hmapIndex]), innerI.y);
 
         /// QUADS ///
         if (math.all(innerI < rsize - 1))

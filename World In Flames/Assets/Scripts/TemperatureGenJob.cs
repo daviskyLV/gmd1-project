@@ -35,6 +35,7 @@ public struct TemperatureGenJob : IJobParallelFor
     /// <summary>
     /// Output temperature map, same size as Heightmap
     /// </summary>
+    [WriteOnly]
     public NativeArray<float> TemperatureMap;
 
     public void Execute(int index)

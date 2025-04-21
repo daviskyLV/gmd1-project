@@ -166,6 +166,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   regenerate: 0
   chunkPrefab: {fileID: 3566074572665239877, guid: 35535870512e8b54d83198101e797678, type: 3}
+  chunkMaterial: {fileID: 2100000, guid: c0ead174b11d6de4194e7bfdcc237208, type: 2}
   worldSettings: {fileID: 11400000, guid: 80334fdb4a4a9e846a10ca0bddfb7541, type: 2}
   heightmapSettings: {fileID: 11400000, guid: daebb3e73b65142448ffe479ff1c353f, type: 2}
   temperatureSettings: {fileID: 11400000, guid: 4d8d28a74dcd2f941a47838d2220fd38, type: 2}

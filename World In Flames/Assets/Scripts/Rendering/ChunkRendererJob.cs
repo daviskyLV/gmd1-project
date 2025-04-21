@@ -69,6 +69,7 @@ public struct ChunkRendererJob : IJobParallelFor
 
         /// VERTICE COORDINATES ///
         var vC2 = new float2(inI.x / (float)ProvinceResolution, inI.y / (float)ProvinceResolution);
+        //var vC2 = inI;
         if ((vertType & VerticeType.EdgeConnection) != 0 && (vertType & VerticeType.Main) == 0)
         {
             // edge connection BUT not a main vertice

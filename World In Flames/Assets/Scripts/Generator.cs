@@ -72,23 +72,16 @@ public static class Generator
                     xAxisMultipliers[x * chunkSize + c] = xAxisMultiplierCurve.Evaluate(globalProgress);
                 }
 
-                // Setting up noise
-                var noiseSettings = new SimplexNoiseJobSettings
+                // Creating noise job
+                var job = new SimplexNoise2DJob
                 {
                     Width = chunkSize,
-                    Height = chunkSize,
                     Offset = new float2(offset.x, offset.y),
                     //Scale = scale,
                     Octaves = octaves,
                     Persistence = persistence,
                     Roughness = lacunarity,
-                    OctaveOffsets = octaveOffsets
-                };
-
-                // Creating job
-                var job = new SimplexMapJob
-                {
-                    Settings = noiseSettings,
+                    OctaveOffsets = octaveOffsets,
                     ComputedNoise = noiseChunks[chunkIndex]
                 };
                 jobHandles[chunkIndex] = job.Schedule(chSizeSq, 64);
@@ -227,10 +220,13 @@ public static class Generator
     /// <param name="worldConf">The base world configuration settings to use</param>
     /// <param name="heightConf">Settings to use when generation heightmap (and continents)</param>
     /// <param name="tempConf">Settings to use when generating temperature</param>
-    /// <param name="heightmap">The generated heightmap, whose size is map size * map resolution^2</param>
+    /// <param name="heightMap">The generated heightmap, whose size is map size * map resolution^2</param>
+    /// <param name="temperatureMap">The generated temperature map, whose size is map size * map resolution^2</param>
+    /// <param name="humidityMap">The generated humidity map, whose size is same map size</param>
     /// <param name="provinces">Generated map in row major order</param>
     public static void GenerateContinentalMap(
-        IWorldSettings worldConf, IHeightmapSettings heightConf, ITemperatureSettings tempConf, out float[] heightmap, out Province[] provinces
+        IWorldSettings worldConf, IHeightmapSettings heightConf, ITemperatureSettings tempConf,
+        out float[] heightMap, out float[] temperatureMap, out float[] humidityMap, out Province[] provinces
     ) {
         var worldWidth = worldConf.GetMapWidth();
         var worldHeight = worldConf.GetMapHeight();
@@ -238,6 +234,7 @@ public static class Generator
         var resolution = worldConf.GetMapResolution();
         var totWidth = worldWidth * resolution;
         var totHeight = worldHeight * resolution;
+        var totSize = totWidth * totHeight;
 
         // generating simplex noise heightmap
         var rng = new Unity.Mathematics.Random(worldConf.GetSeed());
@@ -251,21 +248,17 @@ public static class Generator
         }
 
         // Setting up height noise
-        var noiseSettings = new SimplexNoiseJobSettings
+        var computedHeightmap = new NativeArray<float>(totSize, Allocator.TempJob);
+        var heightNoiseJob = new SimplexNoise2DJob
         {
             Width = totWidth,
-            Height = totHeight,
             Offset = new float2(heightConf.GetOffset().x, heightConf.GetOffset().y),
             Octaves = heightConf.GetOctaves(),
             Persistence = heightConf.GetPersistence(),
             Roughness = heightConf.GetRoughness(),
             Smoothness = heightConf.GetSmoothness(),
-            OctaveOffsets = octaveOffsets
-        };
-        var computedHeightmap = new NativeArray<float>(totWidth * totHeight, Allocator.TempJob);
-        var heightNoiseJob = new SimplexMapJob
-        {
-            Settings = noiseSettings,
+            ProvinceDetail = resolution,
+            OctaveOffsets = octaveOffsets,
             ComputedNoise = computedHeightmap
         };
         var heightmapHandle = heightNoiseJob.Schedule(computedHeightmap.Length, 64);
@@ -280,11 +273,22 @@ public static class Generator
             GeneratedMap = new(computedHeightmap.Length, Allocator.TempJob)
         };
         continentJob.Schedule(computedHeightmap.Length, 64).Complete();
-        var generatedContinents = continentJob.GeneratedMap.ToArray();
         heightmapHandle.Complete();
 
         // small cleanup
         octaveOffsets.Dispose();
+
+        // scaling heightmap from 0-1
+        Utilities.GetMinMaxValues(computedHeightmap.ToArray(), out float minCompHeight, out float maxCompHeight);
+        var normalHmapJob = new NormalizerJob
+        {
+            Datapoints = computedHeightmap, // in place
+            EasingFunction = EasingFunction.Linear,
+            MinValue = minCompHeight,
+            MaxValue = maxCompHeight,
+            Invert = false
+        };
+        normalHmapJob.Schedule(computedHeightmap.Length, 64).Complete();
 
         // combining both noises
         var combinerJob = new CombinatorJob
@@ -312,8 +316,18 @@ public static class Generator
         var rescaleHandle = rescaleJob.Schedule(computedHeightmap.Length, 64);
         rescaleHandle.Complete();
 
-        heightmap = computedHeightmap.ToArray();
-        computedHeightmap.Dispose();
+        // calculating temperature map
+        var tempCurveNative = new NativeArray<float>(tempConf.SplitTemperatureCurve(totHeight), Allocator.TempJob);
+        var temperatureJob = new TemperatureGenJob
+        {
+            MapWidth = totWidth,
+            Heightmap = computedHeightmap,
+            TemperatureCurve = tempCurveNative,
+            SeaLevel = worldConf.GetSeaLevel(),
+            AltitudeImpactOnTemperature = EasingFunction.EaseInOutCubic,
+            TemperatureMap = new(totSize, Allocator.TempJob)
+        };
+        var tempHandle = temperatureJob.Schedule(totSize, 64);
 
         // getting province heights by averaging heightmap
         var provHeights = new float[worldSize];
@@ -329,24 +343,11 @@ public static class Generator
                 for (int x = 0; x < resolution; x++)
                 {
                     var hmapI = rowI + provPos.x * resolution + x;
-                    tot += heightmap[hmapI];
+                    tot += computedHeightmap[hmapI];
                 }
             }
             provHeights[i] = tot / (resolution * resolution);
         }
-
-        // calculating temperature map
-        var tempCurveNative = new NativeArray<float>(tempConf.SplitTemperatureCurve(worldHeight), Allocator.TempJob);
-        var temperatureJob = new TemperatureGenJob
-        {
-            MapWidth = worldWidth,
-            Heightmap = new(provHeights, Allocator.TempJob),
-            TemperatureCurve = tempCurveNative,
-            SeaLevel = worldConf.GetSeaLevel(),
-            AltitudeImpactOnTemperature = EasingFunction.EaseInOutCubic,
-            TemperatureMap = new(worldSize, Allocator.TempJob)
-        };
-        var tempHandle = temperatureJob.Schedule(worldSize, 64);
 
         var freshWaterDistance = CalculateFreshWaterDistance(provHeights, worldWidth, worldConf.GetSeaLevel());
         // while temperature finishes, getting max water distance and normalizing it
@@ -365,19 +366,23 @@ public static class Generator
         tempHandle.Complete();
         freshWatHandle.Complete();
 
-        // creating provinces
+        // creating outputs
+        heightMap = computedHeightmap.ToArray();
+        temperatureMap = temperatureJob.TemperatureMap.ToArray();
         provinces = new Province[worldSize];
+        humidityMap = new float[worldSize];
         for (int i = 0; i < provinces.Length; i++)
         {
             var x = i % worldWidth;
             var y = i / worldHeight;
-            provinces[i] = new(new(x, y), provHeights[i], freshWaterNormJob.Datapoints[i], temperatureJob.TemperatureMap[i]);
+            provinces[i] = new(new(x, y), provHeights[i], freshWaterNormJob.Datapoints[i], temperatureJob.TemperatureMap[y * totWidth + x * resolution]);
+            humidityMap[i] = freshWaterNormJob.Datapoints[i];
         }
 
         // cleanup
+        computedHeightmap.Dispose();
         tempCurveNative.Dispose();
         temperatureJob.TemperatureMap.Dispose();
-        temperatureJob.Heightmap.Dispose();
         freshWaterNormJob.Datapoints.Dispose();
     }
 
