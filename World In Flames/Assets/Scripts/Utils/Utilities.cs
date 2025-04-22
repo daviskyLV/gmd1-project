@@ -3,12 +3,43 @@ using Unity.Jobs;
 using UnityEngine;
 using Unity.Mathematics;
 using System.Collections.Generic;
+using static UnityEditor.PlayerSettings;
 
 /// <summary>
 /// Utility methods, for Burst compatible ones use BurstUtilities
 /// </summary>
 public static class Utilities
 {
+    /// <summary>
+    /// Calculates the index within province/vertice array
+    /// </summary>
+    /// <param name="position">Grid position</param>
+    /// <param name="mapSize">Map size (province or vertice)</param>
+    /// <returns>Index in array, if index is negative for an axis, it wraps around to the other side</returns>
+    public static int GetMapIndex(Vector2Int position, Vector2Int mapSize)
+    {
+        return GetMapIndex(position.x, position.y, mapSize.x, mapSize.y);
+    }
+
+    /// <summary>
+    /// Calculates the index within province/vertice array
+    /// </summary>
+    /// <param name="posX">Grid X position</param>
+    /// <param name="posY">Grid Y position</param>
+    /// <param name="mapSizeX">Map size along X axis</param>
+    /// <param name="mapSizeY">Map size along Y axis</param>
+    /// <returns>Index in array, if index is negative for an axis, it wraps around to the other side</returns>
+    public static int GetMapIndex(int posX, int posY, int mapSizeX, int mapSizeY)
+    {
+        posX %= mapSizeX;
+        posY %= mapSizeY;
+        if (posX < 0)
+            posX = mapSizeX - 1;
+        if (posY < 0)
+            posY = mapSizeY - 1;
+        return posY * mapSizeX + posX;
+    }
+
     public static float CalculateEasingFunction(float progress, EasingFunction easingFunction)
     {
         // Easing function implementations from https://easings.net/

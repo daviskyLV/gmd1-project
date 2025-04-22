@@ -4,6 +4,5 @@ public interface IWorldSettings
     public int GetContinentSize();
     public int GetMapWidth();
     public int GetMapHeight();
-    public int GetMapResolution();
     public float GetSeaLevel();
 }

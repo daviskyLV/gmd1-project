@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Unity.Collections;
@@ -113,6 +114,9 @@ public static class Generator
         var totWidth = worldWidth * resolution;
         var totHeight = worldHeight * resolution;
         var totSize = totWidth * totHeight;
+
+        Debug.Log($"world size: {worldWidth}x{worldHeight} = {worldSize}");
+        Debug.Log($"res: {resolution}, tot size: {totWidth}x{totHeight} = {totSize}");
 
         // generating simplex noise heightmap
         var rng = new Unity.Mathematics.Random(worldConf.GetSeed());
@@ -252,8 +256,19 @@ public static class Generator
         for (int i = 0; i < provinces.Length; i++)
         {
             var x = i % worldWidth;
-            var y = i / worldHeight;
-            provinces[i] = new(new(x, y), provHeights[i], freshWaterNormJob.Datapoints[i], temperatureJob.TemperatureMap[y * totWidth + x * resolution]);
+            var y = i / worldWidth;
+
+            if (y * totWidth + x * resolution > temperatureJob.TemperatureMap.Length)
+            {
+                Debug.Log($"i: {i}, x: {x}, y: {y}, y*totWidth = {y*totWidth}, x*resolution = {x*resolution}, index: {y * totWidth + x * resolution}");
+            } 
+            var t = temperatureJob.TemperatureMap[y * totWidth + x * resolution];
+            provinces[i] = new(
+                new(x,y),
+                provHeights[i],
+                freshWaterNormJob.Datapoints[i],
+                t);
+                
             humidityMap[i] = freshWaterNormJob.Datapoints[i];
         }
 

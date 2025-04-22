@@ -36,11 +36,6 @@ public struct ChunkRendererJob : IJobParallelFor
     /// </summary>
     [ReadOnly]
     public int DetailIncrement;
-    /// <summary>
-    /// How many heightmap points are per province in each axis
-    /// </summary>
-    [ReadOnly]
-    public int ProvinceResolution;
 
     /// <summary>
     /// Mesh vertices, length = mesh edge vertices + main vertices + edge connection vertices
@@ -68,7 +63,7 @@ public struct ChunkRendererJob : IJobParallelFor
         var vertType = CalculateVerticeType(inI);
 
         /// VERTICE COORDINATES ///
-        var vC2 = new float2(inI.x / (float)ProvinceResolution, inI.y / (float)ProvinceResolution);
+        var vC2 = new float2(inI.x / (float)Constants.PROVINCE_RESOLUTION, inI.y / (float)Constants.PROVINCE_RESOLUTION);
         //var vC2 = inI;
         if ((vertType & VerticeType.EdgeConnection) != 0 && (vertType & VerticeType.Main) == 0)
         {
@@ -93,7 +88,7 @@ public struct ChunkRendererJob : IJobParallelFor
         } else
         {
             // not edge connection, using normal height
-            Vertices[index] = new(vC2.x, math.max(SeaLevel, Heightmap[hmapIndex]), vC2.y);
+            Vertices[index] = new(vC2.x, Heightmap[hmapIndex], vC2.y);
         }
 
         /// CALCULATING QUADS ///
@@ -305,7 +300,7 @@ public struct ChunkRendererJob : IJobParallelFor
     private readonly float GetHeightAt(int2 coord)
     {
         var hmapIndex = (coord.y + 1) * HeightmapSize + coord.x + 1;
-        return math.max(SeaLevel, Heightmap[hmapIndex]);
+        return Heightmap[hmapIndex];
     }
     private readonly float GetHeightAt(int hmapIndex)
     {

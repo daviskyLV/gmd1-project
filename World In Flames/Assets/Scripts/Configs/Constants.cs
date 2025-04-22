@@ -13,5 +13,6 @@ public static class Constants
     /// <summary>
     /// DetailIncrement for each level of chunk LOD
     /// </summary>
-    public static readonly IReadOnlyList<int> CHUNK_LOD = new List<int> { 1, 2, 4, 5, 8, 10, 16, 20, 40, 80};
+    public static readonly IReadOnlyList<int> CHUNK_LOD = new List<int> { 1, 2, 3, 4, 6, 7, 12, 14, 21, 28, 42, 84 };
+    public static readonly IReadOnlyList<float> LOD_PROGRESS = new List<float> { 1/84f, 2/84f, 3/84f, 4/84f, 6/84f, 7/84f, 12/84f, 14/84f, 21/84f, 28/84f, 42/84f, 1f };
 }

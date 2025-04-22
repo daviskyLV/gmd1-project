@@ -7,17 +7,14 @@ using UnityEngine;
 
 [RequireComponent(typeof(MeshFilter))]
 [RequireComponent(typeof(MeshRenderer))]
-[RequireComponent(typeof(MeshCollider))]
 public class ChunkRenderer : MonoBehaviour
 {
     private MeshFilter meshFilter;
     private MeshRenderer meshRenderer;
-    private MeshCollider meshCollider;
 
     private float[] heightmap;
 
     private float seaLevel;
-    private int provinceResolution;
     private Vector2Int heightmapIndex;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -32,8 +29,6 @@ public class ChunkRenderer : MonoBehaviour
             meshFilter = GetComponent<MeshFilter>();
         if (meshRenderer == null)
             meshRenderer = GetComponent<MeshRenderer>();
-        if (meshCollider == null)
-            meshCollider = GetComponent<MeshCollider>();
     }
 
     /// <summary>
@@ -42,11 +37,10 @@ public class ChunkRenderer : MonoBehaviour
     /// <param name="heightmap">Heightmap data</param>
     /// <param name="seaLevel">Sea level of the chunk, 0-1</param>
     /// <param name="detailIncrement">How much detail to skip in the middle of the mesh, 1 = highest quality, 2 = 50% lower..</param>
-    public IEnumerator RegenerateMesh(float[] heightmap, float seaLevel, int provinceResolution, int detailIncrement = 1)
+    public IEnumerator RegenerateMesh(float[] heightmap, float seaLevel, int detailIncrement = 1)
     {
         this.heightmap = heightmap;
         this.seaLevel = seaLevel;
-        this.provinceResolution = provinceResolution;
         RegenerateMesh(detailIncrement);
         yield return null;
     }
@@ -116,7 +110,6 @@ public class ChunkRenderer : MonoBehaviour
                 Heightmap = hmapNative,
                 HeightmapSize = hmapSize,
                 SeaLevel = seaLevel,
-                ProvinceResolution = provinceResolution,
 
                 // outputs
                 Vertices = vertices,
@@ -134,7 +127,6 @@ public class ChunkRenderer : MonoBehaviour
                 SeaLevel = seaLevel,
                 DetailIncrement = detailIncrement,
                 VxRowSize = vxPerRow,
-                ProvinceResolution = provinceResolution,
                 // outputs
                 Vertices = vertices,
                 Normals = normals,
@@ -177,6 +169,5 @@ public class ChunkRenderer : MonoBehaviour
             triangles = meshTriangles,
         };
         meshFilter.mesh = mesh;
-        meshCollider.sharedMesh = mesh;
     }
 }
