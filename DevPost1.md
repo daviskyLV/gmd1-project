@@ -1,5 +1,5 @@
 # Game dev blog post #1
-The first milestone for the game was about generating the world and it sure was a hard task. Let's see how it went!
+The first milestone for the game was about generating the world and it sure was a hard task. Let's see how it went! **DISCLAIMER: A LOT TO READ, BECAUSE A LOT HAPPENED!**
 
 ## Attempt 1 - "flat" world made from a heightmap that wraps around
 My main inspiration for the world were games like _Sid Meier's Civilization_ (Civ) and _Hearts of Iron 4_ (HoI4), both of which have maps that wrap around horizontally (along longitude). What I mainly wanted were continents like in Civ games and obviously on the Earth like in HoI4.
