@@ -52,6 +52,8 @@ public static class BurstUtilities
                     4 * math.pow(progress, 3),
                     progress < 0.5f
                 );
+            case EasingFunction.EaseInQuart:
+                return math.pow(progress, 4);
             default:
                 // Same as linear
                 return progress;

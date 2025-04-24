@@ -4,6 +4,10 @@
 public enum EasingFunction
 {
     Linear,
+    /// <summary>
+    /// power of 4
+    /// </summary>
+    EaseInQuart,
     EaseInSine,
     EaseOutSine,
     EaseInOutSine,

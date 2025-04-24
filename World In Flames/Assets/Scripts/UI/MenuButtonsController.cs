@@ -76,14 +76,12 @@ public class MenuButtonsController : MonoBehaviour
             return;
 
         var selUI = next.transform.parent.GetComponent<SelectableUI>();
-        Debug.Log($"ui movement: {uiMovement}");
         if (!selUI)
             return;
 
         lastUiNavigation = Time.time;
         selUI.SelectElement(true, true);
         var oldselUI = curGO.transform.parent.GetComponent<SelectableUI>();
-        Debug.Log($"old sel UI: {oldselUI}");
         if (oldselUI)
             oldselUI.SelectElement(false, true);
     }

@@ -44,7 +44,7 @@ Shader "Custom/Terrain"
             #define EaseInCubic     4
             #define EaseOutCubic    5
             #define EaseInOutCubic  6
-            #define EaseInQuadratic 7
+            #define EaseInQuart     7
             // TEXTURE ENUMS
             #define GrassTexIndex   0
             #define SnowTexIndex    1
@@ -90,7 +90,7 @@ Shader "Custom/Terrain"
                 if (easing == EaseLinear) {
                     return progress;
                 }
-                else if (easing == EaseInQuadratic) {
+                else if (easing == EaseInQuart) {
                     return pow(progress, 4);
                 }
                 else if (easing == EaseInSine) {
@@ -195,7 +195,7 @@ Shader "Custom/Terrain"
                 if (IN.realObjPos.y < _SeaLevel)
                 {
                     // couldnt get correctly working results with height, so using world space
-                    terrainColor = lerp(_OceanColor, _SeaColor, calculateEasing(saturate(IN.realObjPos.y/_SeaLevel), EaseInQuadratic));
+                    terrainColor = lerp(_OceanColor, _SeaColor, calculateEasing(saturate(IN.realObjPos.y/_SeaLevel), EaseInQuart));
                 } else {
                     // above waterline, showing ground Textures
                     // code by Sebastian Lague adapted from Surface Shader to HLSL Shader

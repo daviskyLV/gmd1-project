@@ -3,7 +3,6 @@ using Unity.Jobs;
 using UnityEngine;
 using Unity.Mathematics;
 using System.Collections.Generic;
-using static UnityEditor.PlayerSettings;
 
 /// <summary>
 /// Utility methods, for Burst compatible ones use BurstUtilities
@@ -57,6 +56,8 @@ public static class Utilities
                 return 1 - Mathf.Pow(1 - progress, 3);
             case EasingFunction.EaseInOutCubic:
                 return progress < 0.5f ? 4 * Mathf.Pow(progress, 3) : 1 - Mathf.Pow(-2 * progress + 2, 3) / 2f;
+            case EasingFunction.EaseInQuart:
+                return Mathf.Pow(progress, 4);
             default:
                 // Same as linear
                 return progress;

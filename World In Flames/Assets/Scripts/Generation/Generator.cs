@@ -1,6 +1,4 @@
-using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
@@ -104,22 +102,19 @@ public static class Generator
     /// <param name="humidityMap">The generated humidity map, whose size is same map size</param>
     /// <param name="provinces">Generated map in row major order</param>
     public static void GenerateContinentalMap(
-        IWorldSettings worldConf, IHeightmapSettings heightConf, ITemperatureSettings tempConf,
+        IHeightmapSettings heightConf,
         out float[] heightMap, out float[] temperatureMap, out float[] humidityMap, out Province[] provinces
     ) {
-        var worldWidth = worldConf.GetMapWidth();
-        var worldHeight = worldConf.GetMapHeight();
+        var worldWidth = WorldSettings.MapWidth;
+        var worldHeight = WorldSettings.MapHeight;
         var worldSize = worldWidth * worldHeight;
         var resolution = Constants.PROVINCE_RESOLUTION;
         var totWidth = worldWidth * resolution;
         var totHeight = worldHeight * resolution;
         var totSize = totWidth * totHeight;
 
-        Debug.Log($"world size: {worldWidth}x{worldHeight} = {worldSize}");
-        Debug.Log($"res: {resolution}, tot size: {totWidth}x{totHeight} = {totSize}");
-
         // generating simplex noise heightmap
-        var rng = new Unity.Mathematics.Random(worldConf.GetSeed());
+        var rng = new Unity.Mathematics.Random(WorldSettings.Seed);
         var octaveOffsets = new NativeArray<float2>(heightConf.GetOctaves(), Allocator.TempJob);
         for (int i = 0; i < heightConf.GetOctaves(); i++)
         {
@@ -145,16 +140,16 @@ public static class Generator
         };
         var heightmapHandle = heightNoiseJob.Schedule(computedHeightmap.Length, 64);
 
-        var continentJob = new ContinentGenJob
-        {
-            ContinentSize = worldConf.GetContinentSize(),
-            MapWidth = totWidth,
-            Seed = worldConf.GetSeed(),
-            StartImpact = heightConf.GetContinentStartImpact(), // around 5th term the impact will be 80%
-            WaterChance = 0.5f,
-            GeneratedMap = new(computedHeightmap.Length, Allocator.TempJob)
-        };
-        continentJob.Schedule(computedHeightmap.Length, 64).Complete();
+        //var continentJob = new ContinentGenJob
+        //{
+        //    ContinentSize = worldConf.GetContinentSize(),
+        //    MapWidth = totWidth,
+        //    Seed = worldConf.GetSeed(),
+        //    StartImpact = heightConf.GetContinentStartImpact(), // around 5th term the impact will be 80%
+        //    WaterChance = 0.5f,
+        //    GeneratedMap = new(computedHeightmap.Length, Allocator.TempJob)
+        //};
+        //continentJob.Schedule(computedHeightmap.Length, 64).Complete();
         heightmapHandle.Complete();
 
         // small cleanup
@@ -173,17 +168,17 @@ public static class Generator
         normalHmapJob.Schedule(computedHeightmap.Length, 64).Complete();
 
         // combining both noises
-        var combinerJob = new CombinatorJob
-        {
-            InputA = new(computedHeightmap, Allocator.TempJob),
-            InputB = continentJob.GeneratedMap,
-            CombinationTechnique = ValueMultiplier.Multiplicative,
-            Output = computedHeightmap // doing in place
-        };
-        var combinerHandle = combinerJob.Schedule(computedHeightmap.Length, 64);
-        combinerHandle.Complete();
-        combinerJob.InputA.Dispose(); // duplicate
-        combinerJob.InputB.Dispose(); // continent combined, disposing
+        //var combinerJob = new CombinatorJob
+        //{
+        //    InputA = new(computedHeightmap, Allocator.TempJob),
+        //    InputB = continentJob.GeneratedMap,
+        //    CombinationTechnique = ValueMultiplier.Multiplicative,
+        //    Output = computedHeightmap // doing in place
+        //};
+        //var combinerHandle = combinerJob.Schedule(computedHeightmap.Length, 64);
+        //combinerHandle.Complete();
+        //combinerJob.InputA.Dispose(); // duplicate
+        //combinerJob.InputB.Dispose(); // continent combined, disposing
 
         // Scaling back to 0-1
         Utilities.GetMinMaxValues(computedHeightmap.ToArray(), out float minCombined, out float maxCombined);
@@ -199,14 +194,14 @@ public static class Generator
         rescaleHandle.Complete();
 
         // calculating temperature map
-        var tempCurveNative = new NativeArray<float>(tempConf.SplitTemperatureCurve(totHeight), Allocator.TempJob);
+        var tempCurveNative = new NativeArray<float>(TemperatureSettings.SplitTemperatureCurve(totHeight), Allocator.TempJob);
         var temperatureJob = new TemperatureGenJob
         {
             MapWidth = totWidth,
             Heightmap = computedHeightmap,
             TemperatureCurve = tempCurveNative,
-            SeaLevel = worldConf.GetSeaLevel(),
-            AltitudeImpactOnTemperature = EasingFunction.EaseInOutCubic,
+            SeaLevel = WorldSettings.SeaLevel,
+            AltitudeImpactOnTemperature = TemperatureSettings.altitudeImpactOnTemperature,
             TemperatureMap = new(totSize, Allocator.TempJob)
         };
         var tempHandle = temperatureJob.Schedule(totSize, 64);
@@ -231,7 +226,7 @@ public static class Generator
             provHeights[i] = tot / (resolution * resolution);
         }
 
-        var freshWaterDistance = CalculateFreshWaterDistance(provHeights, worldWidth, worldConf.GetSeaLevel());
+        var freshWaterDistance = CalculateFreshWaterDistance(provHeights, worldWidth, WorldSettings.SeaLevel);
         // while temperature finishes, getting max water distance and normalizing it
         Utilities.GetMinMaxValues(freshWaterDistance, out float minWaterDist, out float maxWaterDist);
         var freshWaterNormJob = new NormalizerJob
@@ -258,10 +253,6 @@ public static class Generator
             var x = i % worldWidth;
             var y = i / worldWidth;
 
-            if (y * totWidth + x * resolution > temperatureJob.TemperatureMap.Length)
-            {
-                Debug.Log($"i: {i}, x: {x}, y: {y}, y*totWidth = {y*totWidth}, x*resolution = {x*resolution}, index: {y * totWidth + x * resolution}");
-            } 
             var t = temperatureJob.TemperatureMap[y * totWidth + x * resolution];
             provinces[i] = new(
                 new(x,y),
