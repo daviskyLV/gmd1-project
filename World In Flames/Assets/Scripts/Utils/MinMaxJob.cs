@@ -2,6 +2,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
+using UnityEngine;
 
 /// <summary>
 /// Used to get minimum and maximum values from large input set
@@ -19,10 +20,12 @@ public struct MinMaxJob : IJobParallelFor
     /// <summary>
     /// Where min values will be stored for each chunk, must be same size as chunks
     /// </summary>
+    [WriteOnly]
     public NativeArray<float> minValues;
     /// <summary>
     /// Where max values will be stored for each chunk, must be same size as chunks
     /// </summary>
+    [WriteOnly]
     public NativeArray<float> maxValues;
 
     public void Execute(int index)
@@ -30,6 +33,13 @@ public struct MinMaxJob : IJobParallelFor
         var chunkSize = (int)math.ceil(inputs.Length / (float)chunks);
         var minVal = float.MaxValue;
         var maxVal = float.MinValue;
+
+        var startDI = index * chunkSize;
+        if (startDI >= inputs.Length) {
+            minValues[index] = inputs[^1];
+            maxValues[index] = inputs[^1];
+            return;
+        }
 
         for (int i = 0; i < chunkSize; i++)
         {

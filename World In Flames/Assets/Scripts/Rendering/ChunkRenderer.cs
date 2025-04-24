@@ -16,6 +16,7 @@ public class ChunkRenderer : MonoBehaviour
 
     private float seaLevel;
     private Vector2Int heightmapIndex;
+    private int curLOD;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -25,6 +26,8 @@ public class ChunkRenderer : MonoBehaviour
 
     private void VerifyComponents()
     {
+        if (curLOD <= 0)
+            curLOD = 1;
         if (meshFilter == null)
             meshFilter = GetComponent<MeshFilter>();
         if (meshRenderer == null)
@@ -37,22 +40,24 @@ public class ChunkRenderer : MonoBehaviour
     /// <param name="heightmap">Heightmap data</param>
     /// <param name="seaLevel">Sea level of the chunk, 0-1</param>
     /// <param name="detailIncrement">How much detail to skip in the middle of the mesh, 1 = highest quality, 2 = 50% lower..</param>
-    public IEnumerator RegenerateMesh(float[] heightmap, float seaLevel, int detailIncrement = 1)
+    public void RegenerateMesh(float[] heightmap, float seaLevel, int detailIncrement = 1)
     {
         this.heightmap = heightmap;
         this.seaLevel = seaLevel;
         RegenerateMesh(detailIncrement);
-        yield return null;
     }
 
     /// <summary>
     /// Used to change the LOD of the mesh after already generating it
     /// </summary>
     /// <param name="detailIncrement">How much detail to skip in the middle of the mesh, must be a divisor of sqrt(chunkHeightmap.Length)-5</param>
-    public IEnumerator ChangeLOD(int detailIncrement = 1)
+    public void ChangeLOD(int detailIncrement = 1)
     {
+        if (detailIncrement == curLOD)
+            return;
+
+        curLOD = detailIncrement;
         RegenerateMesh(detailIncrement);
-        yield return null;
     }
 
     /// <summary>

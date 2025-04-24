@@ -50,7 +50,7 @@ public struct HDChunkRendererJob : IJobParallelFor
         var hmapIndex = (innerI.y + 1) * HeightmapSize + innerI.x + 1;
 
         /// VERTICES ///
-        Vertices[index] = new(innerI.x / (float)Constants.PROVINCE_RESOLUTION, Heightmap[hmapIndex], innerI.y / (float)Constants.PROVINCE_RESOLUTION);
+        Vertices[index] = new(innerI.x / Constants.PROV_CLOSENESS, Heightmap[hmapIndex], innerI.y / Constants.PROV_CLOSENESS);
 
         /// QUADS ///
         if (math.all(innerI < rsize - 1))

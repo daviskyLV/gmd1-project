@@ -52,9 +52,9 @@ Shader "Custom/Terrain"
             /// SETTINGS
             TEXTURE2D(_TerrainData); // R = height, G = temperature, B = humidity
             SAMPLER(sampler_TerrainData);
-            float2 _MapSize; // Width, Height for Height & Humidity
-            int _ProvinceResolution; // pixels per province
+            float2 _MapSizeWS; // Map width and height in world space
             float _SeaLevel; // sea level
+            float _FreezingTemperature; // below this appears snow/ice
             float _DebugMode; // if true, no textures will be used 
             // textures
             TEXTURE2D(_GrassTex);
@@ -179,12 +179,10 @@ Shader "Custom/Terrain"
                 float NdotL = max(dot(normal, lightDir), 0);
 
                 // converting world position to coordinates
-                float2 arrCoord = IN.newWorldPos.xz * _ProvinceResolution;
                 // since data is in a texture, we normalize to UV
-                float2 uv = (arrCoord + 0.5) / _MapSize;
+                float2 uv = IN.newWorldPos.xz / _MapSizeWS.xy;
                 uv = saturate(uv);
 
-                // getting data, while humidity is _MapSize / _ProvinceResolution, it repeats data in gaps, so we are fine
                 // sampler_TerrainData is Unity related stuff, idk
                 float height = SAMPLE_TEXTURE2D(_TerrainData, sampler_TerrainData, uv).r;
                 float temperature = SAMPLE_TEXTURE2D(_TerrainData, sampler_TerrainData, uv).g;
@@ -207,7 +205,7 @@ Shader "Custom/Terrain"
                         float3 blendAxes = abs(IN.normalWS);
                         blendAxes /= blendAxes.x + blendAxes.y + blendAxes.z;
                         //terrainColor.rgb = triplanar(IN.worldPos, blendAxes, GrassTexIndex); // grass
-                        if (temperature < 0.2) {
+                        if (temperature < _FreezingTemperature) {
                             terrainColor.rgb = triplanar(IN.newWorldPos, blendAxes, SnowTexIndex); //snow
                         } else {
                             terrainColor.rgb = triplanar(IN.newWorldPos, blendAxes, GrassTexIndex); //grass

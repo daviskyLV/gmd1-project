@@ -18,16 +18,18 @@ public struct NormalizerJob : IJobParallelFor
     [ReadOnly]
     public bool Invert;
 
-    public NativeArray<float> Datapoints;
+    [ReadOnly]
+    public NativeArray<float> Input;
+    [WriteOnly]
+    public NativeArray<float> Output;
 
     public void Execute(int index)
     {
         var divisor = MaxValue - MinValue;
         // if divisor = 0, convert it to 1 using branchless method
         divisor = math.select(divisor, 1f, divisor == 0);
-        var progress = (Datapoints[index] - MinValue) / divisor;
-        Datapoints[index] = BurstUtilities.CalculateEasingFunction(progress, EasingFunction);
-        if (Invert)
-            Datapoints[index] = 1 - Datapoints[index];
+        var progress = (Input[index] - MinValue) / divisor;
+        var normalized = BurstUtilities.CalculateEasingFunction(progress, EasingFunction);
+        Output[index] = math.select(normalized, 1 - normalized, Invert);
     }
 }

@@ -3,6 +3,8 @@ using Unity.Jobs;
 using UnityEngine;
 using Unity.Mathematics;
 using System.Collections.Generic;
+using System.Collections;
+using System;
 
 /// <summary>
 /// Utility methods, for Burst compatible ones use BurstUtilities
@@ -37,6 +39,44 @@ public static class Utilities
         if (posY < 0)
             posY = mapSizeY - 1;
         return posY * mapSizeX + posX;
+    }
+
+    /// <summary>
+    /// Calculate which LOD to use based on how far away is the object
+    /// </summary>
+    /// <param name="distance">Distance to object</param>
+    /// <returns>LOD represented as DistanceIncrement</returns>
+    public static int CalculateLOD(float distance)
+    {
+        var baseDist = 35f; // distance under which is max quality
+        var maxDist = 160f; // distance at which is lowest quality
+        if (distance <= baseDist)
+            return 1;
+        if (distance >= maxDist)
+            return Constants.LOD[^1];
+
+        //in between 1st and last LOD
+        for (int i = 0; i < Constants.LOD.Count; i++)
+        {
+            if (distance < baseDist + Constants.LOD_PROGRESS[i] * (maxDist-baseDist))
+            {
+                return Constants.LOD[i];
+            }
+        }
+
+        // fallback, lowest quality
+        return Constants.LOD[^1];
+    }
+
+    /// <summary>
+    /// Executes a method/function after a delay
+    /// </summary>
+    /// <param name="delay">Delay in seconds</param>
+    /// <param name="action">Method/function to execute</param>
+    public static IEnumerator DelayedAction(float delay, Action action)
+    {
+        yield return new WaitForSeconds(delay);
+        action?.Invoke();
     }
 
     public static float CalculateEasingFunction(float progress, EasingFunction easingFunction)
@@ -131,7 +171,7 @@ public static class Utilities
             inputData = merged;
 
             // Reduce further
-            numChunks = math.ceilpow2(numChunks / 2);
+            numChunks = math.max(1, math.ceilpow2(numChunks / 2));
 
             // Disposing old data
             minMaxJob.minValues.Dispose();
@@ -145,10 +185,16 @@ public static class Utilities
                 return;
             }
         }
-        inputData.Dispose();
 
-        // huh?
-        FinalMinMaxCalculation(input, out min, out max);
+        var finalData = inputData.ToArray();
+        inputData.Dispose();
+        if (finalData.Length == 0)
+        {
+            min = max = 0;
+            return;
+        }
+
+        FinalMinMaxCalculation(finalData, out min, out max);
     }
 
     /// <summary>

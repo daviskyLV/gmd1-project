@@ -63,7 +63,7 @@ public struct ChunkRendererJob : IJobParallelFor
         var vertType = CalculateVerticeType(inI);
 
         /// VERTICE COORDINATES ///
-        var vC2 = new float2(inI.x / (float)Constants.PROVINCE_RESOLUTION, inI.y / (float)Constants.PROVINCE_RESOLUTION);
+        var vC2 = new float2(inI.x / Constants.PROV_CLOSENESS, inI.y / Constants.PROV_CLOSENESS);
         //var vC2 = inI;
         if ((vertType & VerticeType.EdgeConnection) != 0 && (vertType & VerticeType.Main) == 0)
         {

@@ -6,15 +6,16 @@ public class World : MonoBehaviour
 {
     public static World Instance { get; private set; }
 
-    private Province[] provinces;
+    private Province[] provinces = new Province[0];
     /// <summary>
     /// Map size measured in provinces
     /// </summary>
-    private Vector2Int mapSize;
-    private float[] heightMap;
-    private float[] temperatureMap;
-    private float[] humidityMap;
-    private GameObject[] chunks;
+    public Vector2Int MapSize { get; private set; } = new();
+    private float[] heightMap = new float[0];
+    private float[] temperatureMap = new float[0];
+    private float[] humidityMap = new float[0];
+    private ChunkRenderer[] chunks = new ChunkRenderer[0];
+    public bool Generated { get; private set; } = false;
 
     [SerializeField]
     private GameObject chunkPrefab;
@@ -36,16 +37,17 @@ public class World : MonoBehaviour
     /// </summary>
     public void ClearGame()
     {
+        Generated = false;
         // Cleaning up
         foreach (var chunk in chunks)
         {
             Destroy(chunk);
         }
-        mapSize = new();
-        heightMap = null;
-        temperatureMap = null;
-        humidityMap = null;
-        chunks = null;
+        chunks = new ChunkRenderer[0];
+        MapSize = new();
+        heightMap = new float[0];
+        temperatureMap = new float[0];
+        humidityMap = new float[0];
     }
 
     /// <summary>
@@ -56,7 +58,7 @@ public class World : MonoBehaviour
     /// <returns>Province, if index is negative for an axis, it wraps around to the other side</returns>
     public Province GetProvinceAt(int x, int y)
     {
-        return provinces[Utilities.GetMapIndex(x, y, mapSize.x, mapSize.y)];
+        return provinces[Utilities.GetMapIndex(x, y, MapSize.x, MapSize.y)];
     }
 
     /// <summary>
@@ -67,8 +69,7 @@ public class World : MonoBehaviour
     /// <returns>Height 0-1, if index is negative for an axis, it wraps around to the other side</returns>
     public float GetHeightAt(int x, int y)
     {
-        var m = mapSize * Constants.PROVINCE_RESOLUTION;
-        return heightMap[Utilities.GetMapIndex(x, y, m.x, m.y)];
+        return heightMap[Utilities.GetMapIndex(x, y, MapSize.x, MapSize.y)];
     }
 
     /// <summary>
@@ -79,8 +80,7 @@ public class World : MonoBehaviour
     /// <returns>Temperature 0-1, if index is negative for an axis, it wraps around to the other side</returns>
     public float GetTemperatureAt(int x, int y)
     {
-        var m = mapSize * Constants.PROVINCE_RESOLUTION;
-        return temperatureMap[Utilities.GetMapIndex(x, y, m.x, m.y)];
+        return temperatureMap[Utilities.GetMapIndex(x, y, MapSize.x, MapSize.y)];
     }
 
     /// <summary>
@@ -91,7 +91,7 @@ public class World : MonoBehaviour
     /// <returns>Humidity, if index is negative for an axis, it wraps around to the other side</returns>
     public float GetHumidityAt(int x, int y)
     {
-        return humidityMap[Utilities.GetMapIndex(x, y, mapSize.x, mapSize.y)];
+        return humidityMap[Utilities.GetMapIndex(x, y, MapSize.x, MapSize.y)];
     }
 
     /// <summary>
@@ -102,12 +102,13 @@ public class World : MonoBehaviour
     /// <returns>An array of chunk coordinates that use these vertex coordinates to compute mesh, normals, etc.</returns>
     public Vector2Int[] VertexCoordinateToChunkCoordinate(int x, int y)
     {
-        var chSide = Constants.CHUNK_SIZE_PROVINCES * Constants.PROVINCE_RESOLUTION; // to fix gaps
-        var vxMapSize = mapSize * Constants.PROVINCE_RESOLUTION;
-        var mapChunks = mapSize / Constants.CHUNK_SIZE_PROVINCES;
+        x = Mathf.Clamp(x, 0, MapSize.x-2);
+        y = Mathf.Clamp(y, 0, MapSize.y - 2);
+        var chSide = Constants.CHUNK_PROVS; // to fix gaps
+        var mapChunks = MapSize / Constants.CHUNK_PROVS;
 
         var vxChunks = new List<Vector2Int>();
-        var baseChunk = vxMapSize / chSide;
+        var baseChunk = new Vector2Int(x, y) / chSide;
         var innerX = x % chSide;
         var innerY = y % chSide;
         vxChunks.Add(baseChunk);
@@ -152,22 +153,34 @@ public class World : MonoBehaviour
         var coords = VertexCoordinateToChunkCoordinate(x, y);
 
         var final = new GameObject[coords.Length];
-        var rowSize = mapSize.x / Constants.CHUNK_SIZE_PROVINCES;
+        var rowSize = MapSize.x / Constants.CHUNK_PROVS;
         for (int i = 0; i < coords.Length; i++)
         {
-            final[i] = chunks[coords[i].y * rowSize + coords[i].x];
+            final[i] = chunks[coords[i].y * rowSize + coords[i].x].transform.gameObject;
         }
 
         return final;
     }
 
+    public void RecalculateChunkLODs(Vector3 camPos)
+    {
+        foreach (var chunk in chunks)
+        {
+            // not refreshing all at once, to not cause major stutters every second
+            StartCoroutine(Utilities.DelayedAction(
+                Random.value / 5f,
+                () => chunk.ChangeLOD(Utilities.CalculateLOD(Vector3.Distance(camPos, chunk.transform.position + Vector3.one*(Constants.CHUNK_PROVS/Constants.PROV_CLOSENESS) )))
+            ));
+        }
+    }
+
     /// <summary>
     /// Generates a new map for the game, also clears previous map
     /// </summary>
-    public IEnumerator RegenerateMap()
+    public void RegenerateMap(Vector3 camPos)
     {
         ClearGame();
-        mapSize = new(WorldSettings.MapWidth, WorldSettings.MapHeight);
+        MapSize = new(WorldSettings.ChunksX * Constants.CHUNK_PROVS + 1, WorldSettings.ChunksY * Constants.CHUNK_PROVS + 1);
         Generator.GenerateContinentalMap(heightmapSettings, out float[] hmap, out float[] tempMap, out float[] humMap, out Province[] provs);
         heightMap = hmap;
         temperatureMap = tempMap;
@@ -175,16 +188,12 @@ public class World : MonoBehaviour
         provinces = provs;
 
         // Converting terrain data into a texture for shader
-        var res = Constants.PROVINCE_RESOLUTION;
-        var resSq = res * res;
-        var fullWidth = mapSize.x * res;
-        var fullHeight = mapSize.y * res;
         var terrainDataArr = new Color[hmap.Length];
         for (int i = 0; i < terrainDataArr.Length; i++)
         {
-            terrainDataArr[i] = new(hmap[i], tempMap[i], humMap[i / resSq], 1);
+            terrainDataArr[i] = new(hmap[i], tempMap[i], humMap[i], 1);
         }
-        var terrainData = new Texture2D(fullWidth, fullHeight, TextureFormat.RGBAFloat, false, true);
+        var terrainData = new Texture2D(MapSize.x, MapSize.y, TextureFormat.RGBAFloat, false, true);
         terrainData.filterMode = FilterMode.Point;     // Disable blurring
         terrainData.wrapMode = TextureWrapMode.Clamp;  // Clamp edges
         terrainData.SetPixels(terrainDataArr);
@@ -192,18 +201,17 @@ public class World : MonoBehaviour
 
         // Setting shader data
         chunkMaterial.SetTexture("_TerrainData", terrainData);
-        chunkMaterial.SetInteger("_ProvinceResolution", res);
-        chunkMaterial.SetVector("_MapSize", new(fullWidth, fullHeight));
+        chunkMaterial.SetFloat("_FreezingTemperature", TemperatureSettings.freezingTemperature);
+        chunkMaterial.SetVector("_MapSizeWS", new(MapSize.x / Constants.PROV_CLOSENESS, MapSize.y / Constants.PROV_CLOSENESS));
         chunkMaterial.SetFloat("_SeaLevel", WorldSettings.SeaLevel);
 
         // instantiating chunks
-        var chSide = Constants.CHUNK_SIZE_PROVINCES * Constants.PROVINCE_RESOLUTION; // to fix gaps
-        var fullChSide = chSide + 2; // including non chunk vertices that are on border
-        var vxMapSize = mapSize * Constants.PROVINCE_RESOLUTION;
-        var mapChunks = mapSize / Constants.CHUNK_SIZE_PROVINCES;
-        for (int chunkY = 0; chunkY < mapChunks.y; chunkY++)
+        chunks = new ChunkRenderer[WorldSettings.ChunksX * WorldSettings.ChunksY];
+        var chSide = Constants.CHUNK_PROVS; // to fix gaps
+        var fullChSide = chSide + 3; // including non chunk vertices that are on border
+        for (int chunkY = 0; chunkY < WorldSettings.ChunksY; chunkY++)
         {
-            for (int chunkX = 0; chunkX < mapChunks.x; chunkX++)
+            for (int chunkX = 0; chunkX < WorldSettings.ChunksX; chunkX++)
             {
                 var chHMap = new float[fullChSide * fullChSide];
                 for (int x = 0; x < fullChSide; x++)
@@ -211,21 +219,26 @@ public class World : MonoBehaviour
                     for (int y = 0; y < fullChSide; y++)
                     {
                         chHMap[y * fullChSide + x] = heightMap[Utilities.GetMapIndex(
-                            Mathf.Clamp(chunkX * chSide + x - 1, 0, vxMapSize.x - 1),
-                            Mathf.Clamp(chunkY * chSide + y - 1, 0, vxMapSize.y - 1),
-                            vxMapSize.x,
-                            vxMapSize.y
+                            Mathf.Clamp(chunkX * chSide + x - 1, 0, MapSize.x - 1),
+                            Mathf.Clamp(chunkY * chSide + y - 1, 0, MapSize.y - 1),
+                            MapSize.x,
+                            MapSize.y
                         )];
                     }
                 }
 
                 var chunk = Instantiate(chunkPrefab, transform);
                 var renderer = chunk.GetComponent<ChunkRenderer>();
-                chunk.transform.position = new(chunkX * Constants.CHUNK_SIZE_PROVINCES + .1f, 0, chunkY * Constants.CHUNK_SIZE_PROVINCES + .1f);
-                StartCoroutine(renderer.RegenerateMesh(chHMap, WorldSettings.SeaLevel, 1));
+                chunk.transform.position = new(
+                    (chunkX * Constants.CHUNK_PROVS)/Constants.PROV_CLOSENESS,
+                    0,
+                    (chunkY * Constants.CHUNK_PROVS)/Constants.PROV_CLOSENESS
+                );
+                chunks[chunkY * WorldSettings.ChunksX + chunkX] = renderer;
+                renderer.RegenerateMesh(chHMap, WorldSettings.SeaLevel, detailIncrement: Utilities.CalculateLOD(Vector3.Distance(camPos, chunk.transform.position)));
             }
         }
 
-        yield return null;
+        Generated = true;
     }
 }

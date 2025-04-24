@@ -15,9 +15,13 @@ public static class TemperatureSettings
         new(1f, 0f)
     });
     /// <summary>
+    /// Point below which ice/snow forms
+    /// </summary>
+    public static float freezingTemperature = 0.3f;
+    /// <summary>
     /// Function to use to calculate how the altitude affects temperature
     /// </summary>
-    public static EasingFunction altitudeImpactOnTemperature = EasingFunction.EaseInQuart;
+    public static EasingFunction altitudeImpactOnTemperature = EasingFunction.EaseInCubic;
 
     /// <summary>
     /// Evaluate temperature curve into X amount of segments
