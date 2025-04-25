@@ -118,7 +118,7 @@ public class GameSetupController : MonoBehaviour
         if (curSelection >= settingOptions.Count)
             curSelection = 0;
         settingOptions[curSelection].UpdateSelection(true);
-        scrollbar.value = 1f - curSelection / (float)settingOptions.Count;
+        scrollbar.value = 1f - curSelection / ((float)settingOptions.Count-1);
 
         lastUiNavigation = Time.time;
         PlaySelectionAudio();
