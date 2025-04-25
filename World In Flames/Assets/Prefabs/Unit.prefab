@@ -13,6 +13,8 @@ GameObject:
   - component: {fileID: 3993475034397330535}
   - component: {fileID: 3555266410966595606}
   - component: {fileID: 4172610039449989655}
+  - component: {fileID: 6866175092502442308}
+  - component: {fileID: 3715786771774813880}
   m_Layer: 7
   m_Name: Unit
   m_TagString: Untagged
@@ -134,7 +136,48 @@ Rigidbody:
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
   m_UseGravity: 1
-  m_IsKinematic: 0
+  m_IsKinematic: 1
   m_Interpolate: 0
   m_Constraints: 80
   m_CollisionDetection: 0
+--- !u!114 &6866175092502442308
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6001204498017982354}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fab5eca9dec00a5499b9612194b6a0e8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  availableColors:
+  - {fileID: 2100000, guid: 67ba1cb13bad61f479ec7e96f37453f1, type: 2}
+  - {fileID: 2100000, guid: 416192d4a7a76494c9f018ff8b1d119e, type: 2}
+  - {fileID: 2100000, guid: 7d478690006e19f488e6522520d6c567, type: 2}
+  - {fileID: 2100000, guid: c7e931e097a25544688928e2e9c3a50f, type: 2}
+  - {fileID: 2100000, guid: 767a367c01feeb947845650707638379, type: 2}
+  - {fileID: 2100000, guid: b72c3c5fe44ffdf47bc53c55c3bd7f6c, type: 2}
+  - {fileID: 2100000, guid: c6bda3f6490ce144e96cef6d0da38e59, type: 2}
+  - {fileID: 2100000, guid: bd97655a4459e3f48871f34fc0023c96, type: 2}
+  - {fileID: 2100000, guid: dc9c6e3b5adfef24b907b890ef09693d, type: 2}
+  - {fileID: 2100000, guid: 7528edcbb20c02e41985d60b138e24ab, type: 2}
+  searchRadius: 50
+  wanderingRadius: 15
+  wanderingDestinationTimeout: 20
+  deathDespawnTime: 5
+  speed: 1
+--- !u!114 &3715786771774813880
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6001204498017982354}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5ce9e9b3baa1c7540973e70f71943cd1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  initialHealth: 25

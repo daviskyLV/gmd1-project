@@ -16,6 +16,7 @@ public class World : MonoBehaviour
     private float[] humidityMap = new float[0];
     private ChunkRenderer[] chunks = new ChunkRenderer[0];
     public bool Generated { get; private set; } = false;
+    public bool Ongoing { get; private set; } = false;
 
     [SerializeField]
     private GameObject chunkPrefab;
@@ -23,6 +24,8 @@ public class World : MonoBehaviour
     private Material chunkMaterial;
     [SerializeField]
     private HeightmapSettings heightmapSettings;
+    [SerializeField]
+    private GameObject spawner;
 
     private void Awake()
     {
@@ -38,6 +41,7 @@ public class World : MonoBehaviour
     public void ClearGame()
     {
         Generated = false;
+        Ongoing = false;
         // Cleaning up
         foreach (var chunk in chunks)
         {
@@ -237,5 +241,6 @@ public class World : MonoBehaviour
         }
 
         Generated = true;
+        Ongoing = true;
     }
 }
