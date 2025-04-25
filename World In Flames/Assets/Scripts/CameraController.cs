@@ -59,7 +59,7 @@ public class CameraController : MonoBehaviour
             Mathf.Clamp(tp.z + camMovement.y * cameraSpeed * Time.deltaTime * curZoomLevel, -2f, World.Instance.MapSize.y / Constants.PROV_CLOSENESS - MARGIN)
         );
 
-        if (lastChunkLODCheck + chunkLODInterval > Time.time)
+        if (lastChunkLODCheck + chunkLODInterval < Time.time)
         {
             lastChunkLODCheck = Time.time;
             World.Instance.RecalculateChunkLODs(transform.position);

@@ -160,7 +160,7 @@ public class GameSetupController : MonoBehaviour
     private IEnumerator ApplyAnimation(AnimationCurve animationCurve)
     {
         var elapsed = 0f;
-        while (elapsed < 1f)
+        while (elapsed < 0.5f)
         {
             rect.localScale = rect.localScale = new(rect.localScale.x, animationCurve.Evaluate(elapsed), rect.localScale.z);
             elapsed += Time.deltaTime;

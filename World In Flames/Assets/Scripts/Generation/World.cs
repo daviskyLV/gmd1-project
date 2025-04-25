@@ -167,10 +167,7 @@ public class World : MonoBehaviour
         foreach (var chunk in chunks)
         {
             // not refreshing all at once, to not cause major stutters every second
-            StartCoroutine(Utilities.DelayedAction(
-                Random.value / 5f,
-                () => chunk.ChangeLOD(Utilities.CalculateLOD(Vector3.Distance(camPos, chunk.transform.position + Vector3.one*(Constants.CHUNK_PROVS/Constants.PROV_CLOSENESS) )))
-            ));
+            chunk.ChangeLOD( Utilities.CalculateLOD( Vector3.Distance(camPos, chunk.transform.position + Vector3.one * (Constants.CHUNK_PROVS / Constants.PROV_CLOSENESS)) ) );
         }
     }
 

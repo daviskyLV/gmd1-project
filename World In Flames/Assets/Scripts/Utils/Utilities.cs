@@ -51,9 +51,14 @@ public static class Utilities
         var baseDist = 35f; // distance under which is max quality
         var maxDist = 160f; // distance at which is lowest quality
         if (distance <= baseDist)
+        {
             return 1;
+        }
+
         if (distance >= maxDist)
+        {
             return Constants.LOD[^1];
+        }
 
         //in between 1st and last LOD
         for (int i = 0; i < Constants.LOD.Count; i++)

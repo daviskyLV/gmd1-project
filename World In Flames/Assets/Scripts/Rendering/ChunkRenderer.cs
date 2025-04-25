@@ -7,10 +7,12 @@ using UnityEngine;
 
 [RequireComponent(typeof(MeshFilter))]
 [RequireComponent(typeof(MeshRenderer))]
+[RequireComponent(typeof(MeshCollider))]
 public class ChunkRenderer : MonoBehaviour
 {
     private MeshFilter meshFilter;
     private MeshRenderer meshRenderer;
+    private MeshCollider meshCollider;
 
     private float[] heightmap;
 
@@ -32,6 +34,8 @@ public class ChunkRenderer : MonoBehaviour
             meshFilter = GetComponent<MeshFilter>();
         if (meshRenderer == null)
             meshRenderer = GetComponent<MeshRenderer>();
+        if (meshCollider == null)
+            meshCollider = GetComponent<MeshCollider>();
     }
 
     /// <summary>
@@ -44,7 +48,11 @@ public class ChunkRenderer : MonoBehaviour
     {
         this.heightmap = heightmap;
         this.seaLevel = seaLevel;
-        RegenerateMesh(detailIncrement);
+        var lodMesh = GenerateMesh(detailIncrement);
+        var colMesh = GenerateMesh(Constants.LOD[1]); // 2nd best quality for collisions
+
+        meshFilter.mesh = lodMesh;
+        meshCollider.sharedMesh = colMesh;
     }
 
     /// <summary>
@@ -57,14 +65,17 @@ public class ChunkRenderer : MonoBehaviour
             return;
 
         curLOD = detailIncrement;
-        RegenerateMesh(detailIncrement);
+        var mesh = GenerateMesh(detailIncrement);
+        meshFilter.mesh = mesh;
     }
+
+
 
     /// <summary>
     /// Internal method that regenerates mesh based on chunk's heightmap, sea level and province resolution settings
     /// </summary>
     /// <param name="detailIncrement">How much detail to skip in the middle of the mesh, must be a divisor of sqrt(chunkHeightmap.Length)-5</param>
-    private void RegenerateMesh(int detailIncrement = 1)
+    private Mesh GenerateMesh(int detailIncrement = 1)
     {
         VerifyComponents();
         var hmapSize = (int)Mathf.Sqrt(heightmap.Length);
@@ -173,6 +184,7 @@ public class ChunkRenderer : MonoBehaviour
             normals = meshNormals,
             triangles = meshTriangles,
         };
-        meshFilter.mesh = mesh;
+        return mesh;
+        //meshFilter.mesh = mesh;
     }
 }
