@@ -19,4 +19,5 @@ public static class WorldSettings
     /// Map seed
     /// </summary>
     public static uint Seed { get; set; } = 727;
+    public static int Civilizations { get; set; } = 4;
 }

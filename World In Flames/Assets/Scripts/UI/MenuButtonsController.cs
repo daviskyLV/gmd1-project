@@ -34,7 +34,7 @@ public class MenuButtonsController : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        if (firstSelection.TryGetComponent<SelectableUI>(out var sel))
+        if (firstSelection.TryGetComponent<MainMenuSelectable>(out var sel))
         {
             sel.SelectElement(true, true);
         }
@@ -75,13 +75,13 @@ public class MenuButtonsController : MonoBehaviour
         if (!next)
             return;
 
-        var selUI = next.transform.parent.GetComponent<SelectableUI>();
+        var selUI = next.transform.parent.GetComponent<MainMenuSelectable>();
         if (!selUI)
             return;
 
         lastUiNavigation = Time.time;
         selUI.SelectElement(true, true);
-        var oldselUI = curGO.transform.parent.GetComponent<SelectableUI>();
+        var oldselUI = curGO.transform.parent.GetComponent<MainMenuSelectable>();
         if (oldselUI)
             oldselUI.SelectElement(false, true);
     }
@@ -92,7 +92,7 @@ public class MenuButtonsController : MonoBehaviour
         if (!curGO)
             return;
 
-        if (curGO.transform.parent.TryGetComponent<SelectableUI>(out var selectableComp))
+        if (curGO.transform.parent.TryGetComponent<MainMenuSelectable>(out var selectableComp))
         {
             selectableComp.ClickElement();
         }

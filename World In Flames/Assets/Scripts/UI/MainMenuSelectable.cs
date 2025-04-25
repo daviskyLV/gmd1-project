@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class SelectableUI : MonoBehaviour
+public class MainMenuSelectable : MonoBehaviour
 {
     [Header("Visibility related")]
     [SerializeField]
