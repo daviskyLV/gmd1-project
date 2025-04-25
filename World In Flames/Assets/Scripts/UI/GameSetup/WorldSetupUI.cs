@@ -1,7 +1,8 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
-public class WorldSetupUI : MonoBehaviour, ISetupButton
+public class WorldSetupUI : SetupButton
 {
     public enum ConfigurationOption
     {
@@ -22,19 +23,26 @@ public class WorldSetupUI : MonoBehaviour, ISetupButton
     private ConfigurationOption affectedOption;
     [SerializeField]
     private TextMeshProUGUI textLabel;
-    
-    public void Accept()
+
+    private Selectable selectable;
+
+    public override Selectable GetSelectable()
+    {
+        return selectable;
+    }
+
+    public override void Accept()
     {
         return; // nothing to accept
     }
 
-    public void SwitchLeft()
+    public override void SwitchLeft()
     {
         currentOption--;
         UpdateConfiguration();
     }
 
-    public void SwitchRight()
+    public override void SwitchRight()
     {
         currentOption++;
         UpdateConfiguration();
@@ -74,5 +82,6 @@ public class WorldSetupUI : MonoBehaviour, ISetupButton
     {
         textLabel.text = optionNames[currentOption];
         TemperatureSettings.freezingTemperature = optionValues[currentOption];
+        selectable = GetComponent<Selectable>();
     }
 }

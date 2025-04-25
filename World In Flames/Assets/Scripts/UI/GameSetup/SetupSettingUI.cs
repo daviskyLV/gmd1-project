@@ -7,17 +7,11 @@ public class SetupSettingUI : MonoBehaviour
     [SerializeField]
     private TextMeshProUGUI[] affectedSelectionTexts;
     [SerializeField]
-    private Selectable selectionObject;
+    private SetupButton selectionObject;
     [SerializeField]
     private Material selectionMaterial;
     [SerializeField]
     private Material defaultMaterial;
-
-    [Header("Audio related stuff (optional)")]
-    [SerializeField]
-    private AudioSource audioOutput;
-    [SerializeField]
-    private AudioClip onSelectAudio;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -36,11 +30,11 @@ public class SetupSettingUI : MonoBehaviour
             txt.fontMaterial = selected ? selectionMaterial : defaultMaterial;
         }
         if (selected) {
-            selectionObject.Select();
-
-            if (audioOutput != null && onSelectAudio != null) {
-                audioOutput.PlayOneShot(onSelectAudio);
-            }
+            selectionObject
+                .GetSelectable()
+                .Select();
         }
     }
+
+    public SetupButton GetSelectionObject() { return selectionObject; }
 }

@@ -1,7 +1,8 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
-public class TemperatureSetupUI : MonoBehaviour, ISetupButton
+public class TemperatureSetupUI : SetupButton
 {
     [SerializeField]
     private string[] optionNames;
@@ -11,13 +12,20 @@ public class TemperatureSetupUI : MonoBehaviour, ISetupButton
     private int currentOption;
     [SerializeField]
     private TextMeshProUGUI textLabel;
+
+    private Selectable selectable;
     
-    public void Accept()
+    public override void Accept()
     {
         return; // nothing to accept
     }
 
-    public void SwitchLeft()
+    public override Selectable GetSelectable()
+    {
+        return selectable;
+    }
+
+    public override void SwitchLeft()
     {
         currentOption--;
         if (currentOption < 0)
@@ -29,7 +37,7 @@ public class TemperatureSetupUI : MonoBehaviour, ISetupButton
         TemperatureSettings.freezingTemperature = optionValues[currentOption];
     }
 
-    public void SwitchRight()
+    public override void SwitchRight()
     {
         currentOption++;
         if (currentOption < 0)
@@ -46,5 +54,6 @@ public class TemperatureSetupUI : MonoBehaviour, ISetupButton
     {
         textLabel.text = optionNames[currentOption];
         TemperatureSettings.freezingTemperature = optionValues[currentOption];
+        selectable = GetComponent<Selectable>();
     }
 }
